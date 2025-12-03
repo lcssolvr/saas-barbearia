@@ -20,12 +20,18 @@ const handleLogin = async () => {
   try {
     erro.value = '';
     loading.value = true;
-    
     await authStore.login(email.value, password.value);
+
+    const tipo = String(authStore.userType).trim().toLowerCase();
+
+    if (tipo === 'super_admin') {
+        router.push('/admin');
+    } else {
+        router.push('/dashboard');
+    }
     
-    router.push('/dashboard');
   } catch (err) {
-    erro.value = 'Email ou senha incorretos.';
+    erro.value = 'Login falhou.';
     console.error(err);
   } finally {
     loading.value = false;

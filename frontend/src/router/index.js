@@ -31,7 +31,10 @@ const routes = [
     path: '/admin',
     component: Admin,
     name: 'Admin',
-    meta: { requiresAuth: true }
+    meta: { 
+        requiresAuth: true,
+        requiresAdmin: true
+    }
   },
   {
   }
@@ -42,14 +45,20 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('barber_token');
-
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/');
-  } else {
-    next();
+router.beforeEach(async (to, from, next) => {
+  const token = localStorage.getItem('barber_token');
+  const userType = localStorage.getItem('user_type');
+  if (to.meta.requiresAuth && !token) {
+    return next('/');
   }
+  if (to.meta.requiresAdmin) {
+    if (userType !== 'super_admin') {
+      alert("Acesso Negado: Área restrita para Super Admin.");
+      return next('/dashboard');
+    }
+  }
+
+  next();
 });
 
 export default router;
