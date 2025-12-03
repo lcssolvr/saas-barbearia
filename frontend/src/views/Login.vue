@@ -39,9 +39,9 @@ const handleLogin = async () => {
       
       <div class="header">
         <div class="logo-circle">
-          ✂️
+          💈
         </div>
-        <h1>BarberSaaS</h1>
+        <h1>NaRégua</h1>
         <p class="subtitle">Gestão inteligente para sua barbearia</p>
       </div>
 
