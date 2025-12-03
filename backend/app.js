@@ -74,6 +74,50 @@ app.post('/api/cadastro', async (req, res) => {
 
 app.use('/api', authMiddleware);
 
+// SUPER ADMIN ROUTES
+
+const requireSuperAdmin = (req, res, next) => {
+    console.log("Verificando acesso Admin para:", req.userType);
+    if (req.userType !== 'super_admin') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas Super Admins.' });
+    }
+    next();
+};
+
+
+
+app.get('/api/admin/tenants', requireSuperAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('barbearias')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.patch('/api/admin/tenants/:id', requireSuperAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, plano } = req.body;
+
+        const { data, error } = await supabase
+            .from('barbearias')
+            .update({ status, plano })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // INICIO AGENDAMENTOS
 
 app.get('/api/agendamentos', async (req, res) => {

@@ -11,16 +11,25 @@ const authMiddleware = async (req, res, next) => {
 
     try {
         const { data: { user }, error } = await supabase.auth.getUser(token);
-        if (error || !user) throw new Error('Token inválido');
-        const { data: profile } = await supabase
+        
+        if (error || !user) {
+            throw new Error('Token inválido');
+        }
+
+        const { data: profile, error: profileError } = await supabase
             .from('usuarios')
-            .select('barbearia_id, tipo')
+            .select('barbearia_id, tipo') 
             .eq('id', user.id)
             .single();
 
-        if (!profile) return res.status(403).json({ error: 'Sem perfil associado.' });
+        if (profileError || !profile) {;
+            return res.status(403).json({ error: 'Perfil de usuário não encontrado no sistema.' });
+        }
+
+
         req.user = user;
         req.barbeariaId = profile.barbearia_id;
+        req.userType = profile.tipo;
         
         next();
     } catch (err) {

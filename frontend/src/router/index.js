@@ -3,6 +3,7 @@ import Login from '../views/Login.vue';
 import Dashboard from '../views/Dashboard.vue';
 import Servicos from '../views/Servicos.vue';
 import Register from '../views/Register.vue';
+import Admin from '../views/Admin.vue';
 
 const routes = [
   { path: '/', 
@@ -25,6 +26,14 @@ const routes = [
     component: Servicos,
     name: 'Servicos',
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin',
+    component: Admin,
+    name: 'Admin',
+    meta: { requiresAuth: true }
+  },
+  {
   }
 ];
 
