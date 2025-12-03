@@ -78,6 +78,10 @@ const handleLogin = async () => {
           <span v-else>Acessar Painel →</span>
         </button>
 
+        <div class="register-link" style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #64748b;">
+            Ainda não é cliente? <a @click="router.push('/cadastro')" style="color: #2563eb; cursor: pointer; font-weight: 600;">Criar conta grátis</a>
+        </div>
+
       </form>
       
       <div class="footer">

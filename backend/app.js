@@ -12,6 +12,66 @@ app.use(cors());
 
 app.get('/', (req, res) => res.send('API BarberSaaS Rodando 🚀'));
 
+// SIGN UP
+
+app.post('/api/cadastro', async (req, res) => {
+    try {
+        const { nome_dono, email, password, nome_barbearia } = req.body;
+
+        if (!email || !password || !nome_barbearia) {
+            return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
+        }
+
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: email,
+            password: password,
+            email_confirm: true
+        });
+
+        if (authError) throw authError;
+
+        const novoUserId = authData.user.id;
+
+        const { data: barbeariaData, error: barbeariaError } = await supabase
+            .from('barbearias')
+            .insert([{
+                nome: nome_barbearia,
+                plano: 'free',
+                status: 'ativo'
+            }])
+            .select()
+            .single();
+
+        if (barbeariaError) {
+            await supabase.auth.admin.deleteUser(novoUserId);
+            throw barbeariaError;
+        }
+
+        const { error: profileError } = await supabase
+            .from('usuarios')
+            .insert([{
+                id: novoUserId,
+                barbearia_id: barbeariaData.id,
+                nome: nome_dono,
+                email: email,
+                tipo: 'dono'
+            }]);
+
+        if (profileError) throw profileError;
+        
+        await supabase.from('servicos').insert([
+            { barbearia_id: barbeariaData.id, nome: 'Corte Simples', preco: 30, duracao_minutos: 30 },
+            { barbearia_id: barbeariaData.id, nome: 'Barba', preco: 20, duracao_minutos: 20 }
+        ]);
+
+        res.status(201).json({ message: 'Conta criada com sucesso!', user: authData.user });
+
+    } catch (err) {
+        console.error(err);
+        res.status(400).json({ error: err.message || 'Erro ao criar conta' });
+    }
+});
+
 app.use('/api', authMiddleware);
 
 // INICIO AGENDAMENTOS
@@ -172,6 +232,10 @@ app.put('/api/servicos/:id', async (req, res) => {
         res.status(400).json({ error: 'Erro ao atualizar serviço' });
     }
 });
+
+// FIM SERVICOS
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Backend rodando na porta ${PORT}`));
