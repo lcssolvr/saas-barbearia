@@ -81,7 +81,7 @@ const handleLogin = async () => {
       </form>
       
       <div class="footer">
-        <small>© 2025 BarberSaaS System</small>
+        <small>© 2025 NaRégua System</small>
       </div>
     </div>
   </div>
