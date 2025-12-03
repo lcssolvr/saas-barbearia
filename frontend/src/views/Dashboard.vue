@@ -1,26 +1,36 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import api from '../services/api'; // O axios configurado
+import api from '../services/api'; 
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import ModalAgendamento from '../components/ModalAgendamento.vue';
 
 const agendamentos = ref([]);
 const loading = ref(true);
+const modalAberto = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
-
 const fetchAgenda = async () => {
+  loading.value = true;
   try {
     const response = await api.get('/agendamentos');
-    agendamentos.value = response.data;
+    agendamentos.value = response.data.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
   } catch (error) {
-    console.error("Erro ao buscar agenda:", error);
-    if(error.response && error.response.status === 401) {
-        alert("Sessão expirada");
-        logout();
-    }
+    console.error("Erro:", error);
   } finally {
     loading.value = false;
+  }
+};
+
+const criarAgendamento = async (dadosDoFormulario) => {
+  try {
+    await api.post('/agendamentos', dadosDoFormulario);
+    
+    modalAberto.value = false;
+    fetchAgenda();
+    alert('Agendado com sucesso!');
+  } catch (error) {
+    alert('Erro ao agendar: ' + error.message);
   }
 };
 
@@ -38,32 +48,49 @@ onMounted(() => {
   <div class="dashboard">
     <header>
       <h2>Painel da Barbearia</h2>
-      <button @click="logout" class="btn-sair">Sair</button>
+      <div>
+        <button @click="modalAberto = true" class="btn-novo">+ Novo Agendamento</button>
+        <button @click="logout" class="btn-sair">Sair</button>
+      </div>
     </header>
 
     <main>
-      <h3>Próximos Agendamentos</h3>
+      <h3>Agenda</h3>
       
       <div v-if="loading">Carregando...</div>
       
-      <div v-else-if="agendamentos.length === 0">
-        Nenhum agendamento encontrado.
-      </div>
-
       <ul v-else class="agenda-list">
         <li v-for="item in agendamentos" :key="item.id" class="card-agenda">
-          <span class="hora">{{ new Date(item.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+           <span class="hora">
+            {{ new Date(item.data_hora).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour: '2-digit', minute:'2-digit'}) }}
+          </span>
           <div class="info">
             <strong>{{ item.cliente_nome }}</strong>
-            <span class="status" :class="item.status">{{ item.status }}</span>
+            <span class="status">{{ item.status }}</span>
           </div>
         </li>
       </ul>
     </main>
+
+    <ModalAgendamento 
+      :isOpen="modalAberto" 
+      @close="modalAberto = false"
+      @save="criarAgendamento"
+    />
   </div>
 </template>
 
 <style scoped>
+.btn-novo { 
+    background: #2980b9; 
+    color: white; 
+    border: none; 
+    padding: 5px 15px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    margin-right: 10px; 
+}
+
 .dashboard { 
     padding: 20px; 
     font-family: sans-serif; 
@@ -79,7 +106,7 @@ header {
 }
 
 .btn-sair { 
-    background: #e74c3c; 
+    background: #e74c3c;
     color: white; 
     border: none; 
     padding: 5px 15px; 
@@ -104,10 +131,10 @@ header {
 }
 
 .hora { 
-    font-size: 1.2rem; 
-    font-weight: 
-    bold; 
+    font-size: 1.1rem; 
+    font-weight: bold; 
     color: #2c3e50; 
+    min-width: 120px;
 }
 
 .status { 
@@ -115,10 +142,7 @@ header {
     padding: 2px 6px; 
     border-radius: 4px; 
     text-transform: uppercase; 
+    background: #eee; 
 }
 
-.status.pendente { 
-    background: #f1c40f; 
-    color: #000; 
-}
 </style>

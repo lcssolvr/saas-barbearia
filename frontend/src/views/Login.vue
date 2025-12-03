@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
-const email = ref('admin@barbearia.com'); // Já deixei preenchido pra facilitar seu teste
+const email = ref('admin@barbearia.com');
 const password = ref('123456');
 const router = useRouter();
 const authStore = useAuthStore();
@@ -12,10 +12,8 @@ const erro = ref('');
 const handleLogin = async () => {
   try {
     erro.value = '';
-    // Chama a action do Pinia que criamos antes
     await authStore.login(email.value, password.value);
     
-    // Se der certo, redireciona para o Dashboard
     router.push('/dashboard');
   } catch (err) {
     erro.value = 'Login falhou. Verifique os dados.';
@@ -26,7 +24,7 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-container">
-    <h1>💇‍♂️ BarberSaaS</h1>
+    <h1>BarberSaaS</h1>
     <div class="card">
       <h2>Entrar</h2>
       <input v-model="email" type="email" placeholder="Seu e-mail" />
