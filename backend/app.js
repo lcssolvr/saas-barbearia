@@ -19,7 +19,7 @@ app.use('/api', authMiddleware);
 app.get('/api/agendamentos', async (req, res) => {
     const { data, error } = await supabase
         .from('agendamentos')
-        .select('*')
+        .select('*, servicos(nome, preco)')
         .eq('barbearia_id', req.barbeariaId);
 
     if (error) return res.status(400).json(error);

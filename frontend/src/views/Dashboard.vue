@@ -61,13 +61,22 @@ onMounted(() => {
       
       <ul v-else class="agenda-list">
         <li v-for="item in agendamentos" :key="item.id" class="card-agenda">
-           <span class="hora">
-            {{ new Date(item.data_hora).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour: '2-digit', minute:'2-digit'}) }}
-          </span>
-          <div class="info">
-            <strong>{{ item.cliente_nome }}</strong>
-            <span class="status">{{ item.status }}</span>
-          </div>
+            <span class="hora">
+                {{ new Date(item.data_hora).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour: '2-digit', minute:'2-digit'}) }}
+            </span>
+
+            <div class="info">
+                <div class="cliente-linha">
+                    <strong>{{ item.cliente_nome }}</strong>
+                    <span v-if="item.servicos" class="servico-tag">
+                        {{ item.servicos.nome }}
+                    </span>
+                </div>
+                <div class="detalhes-extras">
+                    <small v-if="item.servicos">R$ {{ item.servicos.preco }}</small>
+                    <span class="status" :class="item.status">{{ item.status }}</span>
+                </div>
+            </div>
         </li>
       </ul>
     </main>
@@ -143,6 +152,29 @@ header {
     border-radius: 4px; 
     text-transform: uppercase; 
     background: #eee; 
+}
+
+.cliente-linha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.servico-tag {
+    font-size: 0.85rem;
+    color: #555;
+    background-color: #f0f0f0;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+}
+
+.detalhes-extras {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    font-size: 0.9rem;
+    color: #666;
 }
 
 </style>
