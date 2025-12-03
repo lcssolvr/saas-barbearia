@@ -10,17 +10,36 @@ const loading = ref(true);
 const modalAberto = ref(false);
 const itemParaEditar = ref(null);
 
+const dataFiltro = ref(new Date().toISOString().split('T')[0]);
+
 const authStore = useAuthStore();
 const router = useRouter();
 
-const totalAgendamentos = computed(() => agendamentos.value.length);
+const totalAgendamentos = computed(() => agendamentosFiltrados.value.length);;
 
 const faturamentoPrevisto = computed(() => {
-  return agendamentos.value.reduce((acc, item) => {
+  return agendamentosFiltrados.value.reduce((acc, item) => {
     const preco = item.servicos ? Number(item.servicos.preco) : 0;
     return acc + preco;
   }, 0);
 });
+
+const agendamentosFiltrados = computed(() => {
+  return agendamentos.value.filter(item => {
+    const dataItem = item.data_hora.slice(0, 10);
+    return dataItem === dataFiltro.value;
+  });
+});
+
+const irParaHoje = () => {
+  dataFiltro.value = new Date().toISOString().split('T')[0];
+};
+
+const mudarData = (dias) => {
+  const dataAtual = new Date(dataFiltro.value);
+  dataAtual.setDate(dataAtual.getDate() + dias);
+  dataFiltro.value = dataAtual.toISOString().split('T')[0];
+};
 
 const fetchAgenda = async () => {
   loading.value = true;
@@ -91,6 +110,16 @@ onMounted(() => fetchAgenda());
     </header>
 
     <main>
+      <div class="filter-bar">
+        <button @click="mudarData(-1)" class="btn-nav">❮</button>
+        
+        <input type="date" v-model="dataFiltro" class="date-input" />
+        
+        <button @click="mudarData(1)" class="btn-nav">❯</button>
+        
+        <button @click="irParaHoje" class="btn-hoje">Hoje</button>
+      </div>
+
       <div class="stats-container">
         <div class="stat-card blue">
           <span class="stat-title">Agendamentos</span>
@@ -98,43 +127,36 @@ onMounted(() => fetchAgenda());
         </div>
 
         <div class="stat-card green">
-          <span class="stat-title">Faturamento Previsto</span>
+          <span class="stat-title">Faturamento</span>
           <strong class="stat-value">R$ {{ faturamentoPrevisto.toFixed(2) }}</strong>
         </div>
       </div>
 
-      <h3>Agenda do Dia</h3>
+      <h3>Agenda de {{ new Date(dataFiltro + 'T00:00:00').toLocaleDateString('pt-BR') }}</h3>
+      
       <div v-if="loading">Carregando...</div>
+
+      <div v-else-if="agendamentosFiltrados.length === 0" class="empty-state">
+        Nenhum agendamento para este dia.
+      </div>
       
       <ul v-else class="agenda-list">
-        <li v-for="item in agendamentos" :key="item.id" class="card-agenda">
-          
-          <div class="card-left">
-            <div class="hora-box">
-               {{ new Date(item.data_hora).toLocaleString('pt-BR', {hour: '2-digit', minute:'2-digit'}) }}
-               <small>{{ new Date(item.data_hora).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) }}</small>
-            </div>
-            
-            <div class="info-cliente">
-              <strong>{{ item.cliente_nome }}</strong>
-              <span v-if="item.servicos" class="servico-tag">
-                {{ item.servicos.nome }}
-              </span>
-              <span v-if="item.status !== 'pendente'" class="status-badge" :class="item.status">
-                {{ item.status }}
-              </span>
-            </div>
-          </div>
-
-          <div class="card-right">
-             <div class="financeiro" v-if="item.servicos">
-                R$ {{ item.servicos.preco }}
+        <li v-for="item in agendamentosFiltrados" :key="item.id" class="card-agenda">
+             <div class="card-left">
+                <div class="hora-box">
+                   {{ new Date(item.data_hora).toLocaleString('pt-BR', {hour: '2-digit', minute:'2-digit'}) }}
+                </div>
+                <div class="info-cliente">
+                  <strong>{{ item.cliente_nome }}</strong>
+                  <span v-if="item.servicos" class="servico-tag">{{ item.servicos.nome }}</span>
+                  <span v-if="item.status !== 'pendente'" class="status-badge" :class="item.status">{{ item.status }}</span>
+                </div>
              </div>
-             
-             <button @click="abrirEdicao(item)" class="btn-icon btn-edit" title="Editar">✎</button>
-             <button @click="cancelarAgendamento(item.id)" class="btn-icon btn-delete" title="Cancelar">✕</button>
-          </div>
-
+             <div class="card-right">
+                 <div class="financeiro" v-if="item.servicos">R$ {{ item.servicos.preco }}</div>
+                 <button @click="abrirEdicao(item)" class="btn-icon btn-edit">✎</button>
+                 <button @click="cancelarAgendamento(item.id)" class="btn-icon btn-delete">✕</button>
+             </div>
         </li>
       </ul>
     </main>
@@ -162,6 +184,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .agenda-list { list-style: none; padding: 0; }
 .card-agenda { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 15px 20px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
 .card-agenda:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.date-input { padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; color: #334155;font-family: inherit; }
 
 .card-left { display: flex; align-items: center; gap: 20px; }
 .hora-box { display: flex; flex-direction: column; align-items: center; font-weight: bold; font-size: 1.2rem; color: #2c3e50; background: #f8fafc; padding: 5px 10px; border-radius: 6px; min-width: 60px; }
@@ -183,4 +206,12 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .btn-sair { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px; }
 .btn-servicos { background: #64748b; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px;}
 .btn-servicos:hover { background: #475569; }
+.btn-nav { background: #f1f5f9; border: 1px solid #cbd5e1; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; font-weight: bold; color: #475569; }
+.btn-nav:hover { background: #e2e8f0; }
+.btn-hoje { background: #e0f2fe; color: #0284c7; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-hoje:hover { background: #bae6fd; }
+
+.empty-state { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; border: 2px dashed #e2e8f0; border-radius: 8px; }
+
+.filter-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
 </style>
