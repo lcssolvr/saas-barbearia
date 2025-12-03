@@ -35,14 +35,20 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
-      await supabase.auth.signOut();
-      this.user = null;
-      this.session = null;
-      this.userType = null;
-      localStorage.removeItem('barber_token');
-      localStorage.removeItem('user_type');
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) console.warn("Aviso no Logout Supabase:", error.message);
+      } catch (err) {
+        console.error("Erro ao tentar sair:", err);
+      } finally {
+        this.user = null;
+        this.session = null;
+        this.userType = null;
+        localStorage.removeItem('barber_token');
+        localStorage.removeItem('user_type');
+        window.location.href = '/'; 
+      }
     },
-
     async checkSession() {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
