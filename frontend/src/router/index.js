@@ -4,6 +4,7 @@ import Dashboard from '../views/Dashboard.vue';
 import Servicos from '../views/Servicos.vue';
 import Register from '../views/Register.vue';
 import Admin from '../views/Admin.vue';
+import AgendamentoPublico from '../views/AgendamentoPublico.vue';
 
 const routes = [
   { path: '/', 
@@ -37,6 +38,8 @@ const routes = [
     }
   },
   {
+    path: '/agendar/:slug',
+    component: AgendamentoPublico
   }
 ];
 

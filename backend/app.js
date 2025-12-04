@@ -1,16 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const authMiddleware = require('./middlewares/authMiddleware');
 const supabase = require('./config/supabase');
+
+function criarSlug(nome) {
+    if (!nome) return '';
+    return nome
+        .toString()
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') 
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+}
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
 
-app.get('/', (req, res) => res.send('API BarberSaaS Rodando 🚀'));
+app.get('/', (req, res) => res.send('api rodando'));
 
 // SIGN UP
 
@@ -18,24 +30,20 @@ app.post('/api/cadastro', async (req, res) => {
     try {
         const { nome_dono, email, password, nome_barbearia } = req.body;
 
-        if (!email || !password || !nome_barbearia) {
-            return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
-        }
-
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email: email,
-            password: password,
-            email_confirm: true
+            email, password, email_confirm: true
         });
-
         if (authError) throw authError;
 
-        const novoUserId = authData.user.id;
+        const slugBase = criarSlug(nome_barbearia);
+        const codigoUnico = authData.user.id.substring(0, 4);
+        const slugFinal = `${slugBase}-${codigoUnico}`;
 
         const { data: barbeariaData, error: barbeariaError } = await supabase
             .from('barbearias')
             .insert([{
                 nome: nome_barbearia,
+                slug: slugFinal,
                 plano: 'free',
                 status: 'ativo'
             }])
@@ -43,36 +51,98 @@ app.post('/api/cadastro', async (req, res) => {
             .single();
 
         if (barbeariaError) {
-            await supabase.auth.admin.deleteUser(novoUserId);
+            await supabase.auth.admin.deleteUser(authData.user.id);
             throw barbeariaError;
         }
-
-        const { error: profileError } = await supabase
-            .from('usuarios')
-            .insert([{
-                id: novoUserId,
-                barbearia_id: barbeariaData.id,
-                nome: nome_dono,
-                email: email,
-                tipo: 'dono'
-            }]);
-
-        if (profileError) throw profileError;
+        await supabase.from('usuarios').insert([{
+            id: authData.user.id,
+            barbearia_id: barbeariaData.id,
+            nome: nome_dono,
+            email: email,
+            tipo: 'dono'
+        }]);
         
         await supabase.from('servicos').insert([
-            { barbearia_id: barbeariaData.id, nome: 'Corte Simples', preco: 30, duracao_minutos: 30 },
-            { barbearia_id: barbeariaData.id, nome: 'Barba', preco: 20, duracao_minutos: 20 }
+            { barbearia_id: barbeariaData.id, nome: 'Corte', preco: 30, duracao_minutos: 30 },
+            { barbearia_id: barbeariaData.id, nome: 'Barba', preco: 25, duracao_minutos: 30 }
         ]);
 
-        res.status(201).json({ message: 'Conta criada com sucesso!', user: authData.user });
+        res.status(201).json({ message: 'Conta criada!', slug: slugFinal });
 
     } catch (err) {
         console.error(err);
-        res.status(400).json({ error: err.message || 'Erro ao criar conta' });
+        res.status(400).json({ error: err.message });
     }
 });
 
-app.use('/api', authMiddleware);
+// ROTA PUBLICA AGENDAMENTO
+
+app.get('/api/public/barbearia/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const { data, error } = await supabase
+            .from('barbearias')
+            .select(`
+                id, nome, slug,
+                servicos ( id, nome, preco )
+            `)
+            .eq('slug', slug)
+            .single();
+
+        if (error || !data) return res.status(404).json({ error: 'Barbearia não encontrada' });
+
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/public/agendamentos', async (req, res) => {
+    try {
+        const { barbearia_id, cliente_nome, data_hora, servico_id } = req.body;
+
+        if (!cliente_nome || !data_hora || !servico_id) {
+            return res.status(400).json({ error: 'Dados incompletos' });
+        }
+
+        const { data: staff } = await supabase
+            .from('usuarios')
+            .select('id')
+            .eq('barbearia_id', barbearia_id)
+            .in('tipo', ['dono', 'barbeiro']) 
+            .limit(1)
+            .single();
+
+        if (!staff) return res.status(400).json({ error: 'Nenhum barbeiro disponível nesta unidade.' });
+
+        const { error } = await supabase
+            .from('agendamentos')
+            .insert([{
+                barbearia_id,
+                barbeiro_id: staff.id,
+                cliente_nome,
+                servico_id,
+                data_hora,
+                status: 'pendente'
+            }]);
+
+        if (error) throw error;
+        res.status(201).json({ message: 'Agendado com sucesso!' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(400).json({ error: 'Erro ao agendar.' });
+    }
+});
+// FIM ROTA PUBLICA AGENDAMENTO
+
+app.use('/api', (req, res, next) => {
+    if (req.path.includes('/public/') || req.path.includes('/register')) {
+        return next();
+    }
+    authMiddleware(req, res, next);
+});
 
 // SUPER ADMIN ROUTES
 
@@ -84,7 +154,7 @@ const requireSuperAdmin = (req, res, next) => {
     next();
 };
 
-
+// ROTAS ADMIN
 
 app.get('/api/admin/tenants', requireSuperAdmin, async (req, res) => {
     try {
@@ -117,6 +187,8 @@ app.patch('/api/admin/tenants/:id', requireSuperAdmin, async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 });
+
+// FIM ROTAS ADMIN
 
 // INICIO AGENDAMENTOS
 
