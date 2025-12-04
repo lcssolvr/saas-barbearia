@@ -46,7 +46,8 @@ const confirmar = async () => {
     return alert("Por favor, preencha todos os dados.");
   }
 
-  const dataHoraISO = `${form.value.data}T${form.value.hora}:00`;
+  // INFORMAR AO BANCO HORÁRIO DE BRASILIA
+  const dataHoraISO = `${form.value.data}T${form.value.hora}:00-03:00`;
 
   try {
     await axios.post(`${apiBase}/public/agendamentos`, {

@@ -15,6 +15,13 @@ const form = ref({
 
 const listaServicos = ref([]);
 
+const formatarDataParaInput = (dataISO) => {
+  if (!dataISO) return '';
+  const data = new Date(dataISO);
+  const dataLocal = new Date(data.getTime() - (data.getTimezoneOffset() * 60000));
+  return dataLocal.toISOString().slice(0, 16);
+};
+
 onMounted(async () => {
   try {
     const response = await api.get('/servicos');
@@ -29,7 +36,7 @@ watch(() => props.agendamentoParaEditar, (novoValor) => {
     form.value = {
       id: novoValor.id,
       cliente_nome: novoValor.cliente_nome,
-      data_hora: novoValor.data_hora ? novoValor.data_hora.slice(0, 16) : '', 
+      data_hora: formatarDataParaInput(novoValor.data_hora), 
       servico_id: novoValor.servicos?.id || novoValor.servico_id || '',
       status: novoValor.status || 'pendente'
     };
@@ -52,7 +59,17 @@ const salvar = () => {
     return alert("Preencha nome e data!");
   }
   
-  emit('save', { ...form.value });
+  const dadosParaEnviar = { ...form.value };
+
+ if (dadosParaEnviar.data_hora && !dadosParaEnviar.data_hora.includes('-03:00')) {
+      if(dadosParaEnviar.data_hora.length === 16) {
+         dadosParaEnviar.data_hora += ':00-03:00';
+      } else {
+         dadosParaEnviar.data_hora += '-03:00';
+      }
+  }
+  
+  emit('save', dadosParaEnviar);
 };
 </script>
 
@@ -104,7 +121,6 @@ const salvar = () => {
 </template>
 
 <style scoped>
-
 .modal-overlay { 
     position: fixed; 
     top: 0; 
@@ -199,5 +215,4 @@ input, select {
 .btn-cancel:hover { 
     background: #cbd5e1; 
 }
-
 </style>
