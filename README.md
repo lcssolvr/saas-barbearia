@@ -16,7 +16,7 @@ Este projeto é uma plataforma completa que conecta donos de barbearia, barbeiro
 - **Gestão de Disponibilidade**: Adicionar horários livres para agendamento online.
 - **Minha Carteira**: Acompanhamento dos ganhos pessoais.
 
-### 👤 Para Clientes
+### 👤 Para Clientes (AINDA NÃO IMPLEMENTADO)
 - **Agendamento Online**: Link público para agendar horários com barbeiros específicos.
 - **Histórico**: Visualizar cortes passados.
 - **Cartão Fidelidade**: Programa de recompensas digital (ex: a cada 10 cortes, ganha 1).
