@@ -20,13 +20,16 @@ const form = ref({
   hora: '',
   servico_id: '',
   servico_nome: '', 
-  servico_preco: ''
+  servico_preco: '',
+  agendamento_id: '',
+  barbeiro_nome: ''
 });
 
 onMounted(async () => {
   try {
     const res = await axios.get(`${apiBase}/public/barbearia/${slug}`);
     barbearia.value = res.data;
+    fetchSlots();
   } catch (error) {
     alert("Barbearia não encontrada.");
   } finally {
@@ -41,14 +44,56 @@ const selecionarServico = (servico) => {
   step.value = 2;
 };
 
+const availableSlots = ref([]);
+const filteredSlots = ref([]);
+import { watch } from 'vue';
+
+const fetchSlots = async () => {
+  if (!barbearia.value) return;
+  try {
+    const { data } = await axios.get(`${apiBase}/public/disponibilidade/${barbearia.value.id}`);
+    availableSlots.value = data;
+    filterSlotsByDate();
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const filterSlotsByDate = () => {
+    if (!form.value.data) {
+        filteredSlots.value = [];
+        return;
+    }
+    filteredSlots.value = availableSlots.value.filter(slot => slot.data_hora.startsWith(form.value.data));
+};
+
+watch(() => form.value.data, filterSlotsByDate);
+
+const selecionarHorario = (slot) => {
+    form.value.hora = new Date(slot.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    form.value.agendamento_id = slot.id;
+    form.value.barbeiro_nome = slot.usuarios?.nome;
+};
+
 const confirmar = async () => {
   if (!form.value.cliente_nome || !form.value.data || !form.value.hora) {
     return alert("Por favor, preencha todos os dados.");
   }
 
-  // INFORMAR AO BANCO HORÁRIO DE BRASILIA
-  const dataHoraISO = `${form.value.data}T${form.value.hora}:00-03:00`;
+  if (form.value.agendamento_id) {
+       try {
+        await axios.put(`${apiBase}/public/agendamentos/${form.value.agendamento_id}/reservar`, {
+          cliente_nome: form.value.cliente_nome,
+          servico_id: form.value.servico_id
+        });
+        step.value = 4;
+      } catch (error) {
+        alert("Erro ao reservar: " + (error.response?.data?.error || error.message));
+      }
+      return;
+  }
 
+  const dataHoraISO = `${form.value.data}T${form.value.hora}:00-03:00`;
   try {
     await axios.post(`${apiBase}/public/agendamentos`, {
       barbearia_id: barbearia.value.id,
@@ -117,18 +162,30 @@ const voltar = () => { if(step.value > 1) step.value--; };
             <input type="date" v-model="form.data" class="input-modern" />
           </div>
 
-          <div class="form-group">
-            <label>Horário</label>
-            <input type="time" v-model="form.hora" class="input-modern" />
+          <div class="slots-selection">
+             <label>Horários Disponíveis</label>
+             <div v-if="filteredSlots.length > 0" class="slots-grid-public">
+                <button 
+                    v-for="slot in filteredSlots" 
+                    :key="slot.id" 
+                    class="slot-btn" 
+                    :class="{ selected: form.agendamento_id === slot.id }"
+                    @click="selecionarHorario(slot)"
+                >
+                    <span class="slot-time">{{ new Date(slot.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+                    <span class="slot-barber">{{ slot.usuarios?.nome }}</span>
+                </button>
+             </div>
+             <p v-else class="empty-msg">Nenhum horário disponível nesta data.</p>
           </div>
 
-          <div class="summary-box">
-            <span>Serviço selecionado: <strong>{{ form.servico_nome }}</strong></span>
+          <div class="summary-box" v-if="form.agendamento_id">
+            <span>Horário: <strong>{{ form.hora }}</strong> com {{ form.barbeiro_nome }}</span>
           </div>
 
           <div class="actions">
             <button @click="voltar" class="btn-secondary">Voltar</button>
-            <button @click="step = 3" class="btn-primary" :disabled="!form.data || !form.hora">Continuar</button>
+            <button @click="step = 3" class="btn-primary" :disabled="!form.agendamento_id">Continuar</button>
           </div>
         </div>
 
@@ -275,4 +332,24 @@ label { display: block; margin-bottom: 8px; font-weight: 600; color: #475569; fo
     width: 100%;
   }
 }
+.slots-selection { margin-bottom: 25px; }
+.slots-grid-public { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px; }
+.slot-btn {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.slot-btn:hover { border-color: #3b82f6; background: #eff6ff; }
+.slot-btn.selected { background: #2563eb; color: white; border-color: #2563eb; transform: scale(1.05); }
+
+.slot-time { font-weight: bold; font-size: 1.1rem; }
+.slot-barber { font-size: 0.8rem; opacity: 0.8; margin-top: 4px; }
+.empty-msg { font-style: italic; color: #94a3b8; font-size: 0.9rem; margin-top: 5px; }
 </style>

@@ -221,13 +221,43 @@ app.patch('/api/admin/tenants/:id', requireSuperAdmin, async (req, res) => {
 
 // FIM ROTAS ADMIN
 
+// ROTA PERFIL
+app.get('/api/me', authMiddleware, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select(`
+                id, nome, email, tipo, barbearia_id,
+                barbearias ( slug, nome )
+            `)
+            .eq('id', req.user.id)
+            .single();
+
+        if (error) throw error;
+
+        res.json({
+            ...data,
+            barbearia_slug: data.barbearias?.slug,
+            barbearia_nome: data.barbearias?.nome
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // INICIO AGENDAMENTOS
 
 app.get('/api/agendamentos', async (req, res) => {
-    const { data, error } = await supabase
+    let query = supabase
         .from('agendamentos')
-        .select('*, servicos(nome, preco)')
+        .select('*, servicos(nome, preco), usuarios!barbeiro_id(nome)')
         .eq('barbearia_id', req.barbeariaId);
+
+    if (req.userType === 'cliente') {
+
+    }
+
+    const { data, error } = await query;
 
     if (error) return res.status(400).json(error);
     res.json(data);
@@ -285,7 +315,7 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
 app.put('/api/agendamentos/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { cliente_nome, data_hora, servico_id, status } = req.body;
+        const { cliente_nome, data_hora, servico_id, status, barbeiro_id } = req.body;
 
         const { data, error } = await supabase
             .from('agendamentos')
@@ -293,7 +323,8 @@ app.put('/api/agendamentos/:id', async (req, res) => {
                 cliente_nome,
                 data_hora,
                 servico_id,
-                status
+                status,
+                ...(barbeiro_id && { barbeiro_id })
             })
             .eq('id', id)
             .eq('barbearia_id', req.barbeariaId)
@@ -303,6 +334,108 @@ app.put('/api/agendamentos/:id', async (req, res) => {
         res.json(data[0]);
     } catch (err) {
         res.status(400).json({ error: 'Erro ao atualizar agendamento' });
+    }
+});
+
+// INICIO DISPONIBILIDADE
+
+app.post('/api/disponibilidade', async (req, res) => {
+    try {
+        const { data_hora } = req.body;
+        if (!data_hora) return res.status(400).json({ error: 'Data e hora são obrigatórios' });
+
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .insert([{
+                barbearia_id: req.barbeariaId,
+                barbeiro_id: req.user.id,
+                cliente_nome: 'Livre',
+                data_hora: data_hora,
+                status: 'disponivel',
+                servico_id: null
+            }])
+            .select();
+
+        if (error) throw error;
+        res.status(201).json(data[0]);
+    } catch (err) {
+        console.error("Erro criar disponibilidade:", err);
+        res.status(400).json({ error: 'Erro ao criar horário', details: err.message, pgError: err });
+    }
+});
+
+app.delete('/api/disponibilidade/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { error } = await supabase
+            .from('agendamentos')
+            .delete()
+            .eq('id', id)
+            .eq('barbeiro_id', req.user.id)
+            .eq('status', 'disponivel');
+
+        if (error) throw error;
+        res.status(204).send();
+    } catch (err) {
+        res.status(400).json({ error: 'Erro ao remover horário' });
+    }
+});
+
+// FIM DISPONIBILIDADE
+
+// PUBLIC RESERVA
+app.get('/api/public/disponibilidade/:barbeariaId', async (req, res) => {
+    try {
+        const { barbeariaId } = req.params;
+        const { data } = req.query;
+
+        let query = supabase
+            .from('agendamentos')
+            .select(`
+                id, data_hora, barbeiro_id,
+                usuarios!barbeiro_id ( nome )
+            `)
+            .eq('barbearia_id', barbeariaId)
+            .eq('status', 'disponivel')
+            .gt('data_hora', new Date().toISOString());
+
+        const { data: slots, error } = await query;
+        if (error) throw error;
+
+        res.json(slots);
+    } catch (err) {
+        res.status(400).json({ error: 'Erro ao buscar horários' });
+    }
+});
+
+app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { cliente_nome, servico_id } = req.body;
+
+        const { data: slot, error: checkError } = await supabase
+            .from('agendamentos')
+            .select('status, barbeiro_id')
+            .eq('id', id)
+            .single();
+
+        if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
+        if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
+
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({
+                cliente_nome,
+                servico_id,
+                status: 'pendente'
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (err) {
+        res.status(400).json({ error: 'Erro ao reservar' });
     }
 });
 

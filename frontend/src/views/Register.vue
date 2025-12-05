@@ -9,7 +9,7 @@ const form = ref({
   nome: '',
   email: '',
   password: '',
-  tipo: 'dono', // default
+  tipo: 'dono',
   nome_barbearia: '',
   slug_barbearia: ''
 });
@@ -20,7 +20,6 @@ const erro = ref('');
 const handleRegister = async () => {
   erro.value = '';
   
-  // Validações básicas
   if (!form.value.nome || !form.value.email || !form.value.password) {
     erro.value = "Preencha os campos básicos.";
     return;
@@ -44,7 +43,6 @@ const handleRegister = async () => {
         email: form.value.email,
         password: form.value.password,
         tipo: form.value.tipo,
-        // Envia apenas o necessário
         nome_barbearia: form.value.tipo === 'dono' ? form.value.nome_barbearia : undefined,
         slug_barbearia: form.value.tipo === 'barbeiro' ? form.value.slug_barbearia : undefined
     };
@@ -95,15 +93,14 @@ const handleRegister = async () => {
           <input v-model="form.nome" type="text" placeholder="Ex: Lucas Silva" required />
         </div>
 
-        <!-- CAMPOS ESPECIFICOS -->
         <div v-if="form.tipo === 'dono'" class="input-group slide-in">
           <label>Nome da Barbearia</label>
-          <input v-model="form.nome_barbearia" type="text" placeholder="Ex: Lucas Barber Shop" />
+          <input v-model="form.nome_barbearia" type="text" placeholder="Ex: Barber Shop" />
         </div>
 
         <div v-if="form.tipo === 'barbeiro'" class="input-group slide-in">
-          <label>Slug (Código) da Barbearia</label>
-          <input v-model="form.slug_barbearia" type="text" placeholder="ex: lucas-barber-1234" />
+          <label>Código da Barbearia</label>
+          <input v-model="form.slug_barbearia" type="text" placeholder="ex: loja-barber-1234" />
           <small style="color: #64748b; font-size: 0.8rem;">Peça este código ao dono da barbearia.</small>
         </div>
 
