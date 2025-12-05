@@ -19,6 +19,7 @@ const totalAgendamentos = computed(() => agendamentosFiltrados.value.length);;
 
 const faturamentoPrevisto = computed(() => {
   return agendamentosFiltrados.value.reduce((acc, item) => {
+    if (item.status === 'cancelado' || item.status === 'pendente') return acc;
     const preco = item.servicos ? Number(item.servicos.preco) : 0;
     return acc + preco;
   }, 0);
@@ -141,7 +142,7 @@ onMounted(() => fetchAgenda());
       </div>
       
       <ul v-else class="agenda-list">
-        <li v-for="item in agendamentosFiltrados" :key="item.id" class="card-agenda">
+        <li v-for="item in agendamentosFiltrados" :key="item.id" class="card-agenda" :class="item.status">
              <div class="card-left">
                 <div class="hora-box">
                    {{ new Date(item.data_hora).toLocaleString('pt-BR', {hour: '2-digit', minute:'2-digit'}) }}
@@ -171,29 +172,39 @@ onMounted(() => fetchAgenda());
 </template>
 
 <style scoped>
-.dashboard { padding: 20px; font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; }
-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.dashboard { padding: 20px; font-family: 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 15px; flex-wrap: wrap; gap: 15px;}
 
-.stats-container { display: flex; gap: 20px; margin-bottom: 30px; }
-.stat-card { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; border: 1px solid #e2e8f0; }
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stats-container { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+.stat-card { flex: 1; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; border: 1px solid #e2e8f0; min-width: 200px; }
 .stat-title { color: #64748b; font-size: 0.9rem; text-transform: uppercase; font-weight: 600; }
 .stat-value { font-size: 2rem; font-weight: bold; margin-top: 5px; }
 .stat-card.blue { border-bottom: 4px solid #3b82f6; } .stat-card.blue .stat-value { color: #3b82f6; }
 .stat-card.green { border-bottom: 4px solid #10b981; } .stat-card.green .stat-value { color: #10b981; }
 
 .agenda-list { list-style: none; padding: 0; }
-.card-agenda { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 15px 20px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
+.card-agenda { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 15px 20px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; flex-wrap: wrap; gap: 15px; }
+.card-agenda.concluido { border-left-color: #10b981; }
+.card-agenda.cancelado { border-left-color: #ef4444; }
 .card-agenda:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .date-input { padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; color: #334155;font-family: inherit; }
 
-.card-left { display: flex; align-items: center; gap: 20px; }
+.card-left { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 250px; }
 .hora-box { display: flex; flex-direction: column; align-items: center; font-weight: bold; font-size: 1.2rem; color: #2c3e50; background: #f8fafc; padding: 5px 10px; border-radius: 6px; min-width: 60px; }
 .hora-box small { font-size: 0.7rem; color: #64748b; font-weight: normal; }
 
 .info-cliente { display: flex; flex-direction: column; }
 .info-cliente strong { font-size: 1.1rem; color: #1e293b; }
 .servico-tag { font-size: 0.85rem; color: #64748b; margin-top: 2px; }
-.status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; width: fit-content; text-transform: uppercase; background: #eee;}
+.status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; width: fit-content; text-transform: uppercase; background: #eee; color: #64748b; }
+.status-badge.concluido { background: #d1fae5; color: #065f46; }
+.status-badge.cancelado { background: #fee2e2; color: #991b1b; }
 
 .card-right { display: flex; align-items: center; gap: 10px; }
 .financeiro { font-weight: bold; color: #10b981; font-size: 1rem; margin-right: 10px; }
@@ -213,5 +224,57 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 
 .empty-state { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; border: 2px dashed #e2e8f0; border-radius: 8px; }
 
-.filter-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+.filter-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 10px;
+  }
+  
+  header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .header-actions {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .header-actions button {
+    margin-left: 5px;
+    margin-right: 5px;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    flex: 1;
+  }
+
+  .stat-card {
+    min-width: 90%;
+  }
+
+  .filter-bar {
+    width: 95%;
+    justify-content: space-between;
+  }
+  
+  .card-agenda {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .card-left {
+    width: 100%;
+  }
+
+  .card-right {
+    width: 100%;
+    justify-content: flex-end;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 10px;
+  }
+}
 </style>

@@ -88,7 +88,7 @@ onMounted(() => fetchServicos());
 
 <style scoped>
 .container { padding: 20px; max-width: 800px; margin: 0 auto; font-family: 'Segoe UI', sans-serif; }
-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
 
 .btn-voltar { background: transparent; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
 .btn-voltar:hover { background: #f0f0f0; }
@@ -108,4 +108,13 @@ input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
 
 .btn-delete { background: #fee2e2; color: #ef4444; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
 .btn-delete:hover { background: #ef4444; color: white; }
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+  }
+  .btn-add {
+    padding: 12px;
+  }
+}
 </style>

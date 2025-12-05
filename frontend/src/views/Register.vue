@@ -105,4 +105,10 @@ input:focus { border-color: #2563eb; outline: none; }
 
 .login-link { text-align: center; margin-top: 15px; font-size: 0.9rem; color: #64748b; }
 .login-link a { color: #2563eb; cursor: pointer; text-decoration: underline; font-weight: 600; }
+
+@media (max-width: 480px) {
+  .register-card {
+    padding: 25px;
+  }
+}
 </style>

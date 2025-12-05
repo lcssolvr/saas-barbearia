@@ -182,4 +182,10 @@ h1 { margin: 0; color: #1e293b; font-size: 1.8rem; letter-spacing: -0.5px; }
 }
 
 .footer { text-align: center; margin-top: 30px; color: #94a3b8; }
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 25px;
+  }
+}
 </style>

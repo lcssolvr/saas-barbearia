@@ -259,4 +259,20 @@ label { display: block; margin-bottom: 8px; font-weight: 600; color: #475569; fo
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@media (max-width: 480px) {
+  .public-page {
+    padding: 10px;
+  }
+  .booking-card {
+    padding: 20px;
+    min-height: auto;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  .btn-secondary {
+    width: 100%;
+  }
+}
 </style>

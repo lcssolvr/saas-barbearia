@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 const urlBase = import.meta.env.VITE_API_URL || 'https://saas-barbearia-t2gz.onrender.com/api';
-// const urlBase = 'http://localhost:3000/api';
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
   console.warn('Env VITE_API_URL não está definido');
