@@ -8,9 +8,6 @@ const emit = defineEmits(['refresh']);
 const meusAgendamentos = computed(() => {
     return props.agendamentos.filter(a => {
         if (a.status === 'cancelado') return false;
-        if (a.status === 'pendente') return true;
-        if (a.status === 'disponivel') return a.barbeiro_id === props.user.id;
-        
         return a.barbeiro_id === props.user.id;
     }); 
 });
@@ -260,7 +257,7 @@ onUnmounted(() => {
     border-radius: 12px; 
     margin-bottom: 15px; 
     box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-    border-left: 5px solid transparent; /* Prepare for side border color */
+    border-left: 5px solid transparent;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -324,7 +321,6 @@ onUnmounted(() => {
     .time { font-size: 0.9rem; padding: 5px 8px; min-width: 50px; }
 }
 
-/* Schedule Manager Styles */
 .schedule-manager {
     background: white;
     padding: 20px;

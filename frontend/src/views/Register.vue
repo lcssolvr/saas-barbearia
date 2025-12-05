@@ -90,7 +90,7 @@ const handleRegister = async () => {
 
         <div class="input-group">
           <label>Seu Nome</label>
-          <input v-model="form.nome" type="text" placeholder="Ex: Lucas Silva" required />
+          <input v-model="form.nome" type="text" placeholder="Ex: Claudio Rocha" required />
         </div>
 
         <div v-if="form.tipo === 'dono'" class="input-group slide-in">

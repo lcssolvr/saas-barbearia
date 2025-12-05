@@ -166,7 +166,67 @@ app.post('/api/public/agendamentos', async (req, res) => {
         res.status(400).json({ error: 'Erro ao agendar.' });
     }
 });
+
 // FIM ROTA PUBLICA AGENDAMENTO
+
+// PUBLIC RESERVA
+
+app.get('/api/public/disponibilidade/:barbeariaId', async (req, res) => {
+    try {
+        const { barbeariaId } = req.params;
+        const { data } = req.query;
+
+        let query = supabase
+            .from('agendamentos')
+            .select(`
+                id, data_hora, barbeiro_id,
+                usuarios!barbeiro_id ( nome )
+            `)
+            .eq('barbearia_id', barbeariaId)
+            .eq('status', 'disponivel')
+            .gt('data_hora', new Date().toISOString());
+
+        const { data: slots, error } = await query;
+        if (error) throw error;
+
+        res.json(slots);
+    } catch (err) {
+        res.status(400).json({ error: 'Erro ao buscar horários' });
+    }
+});
+
+app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { cliente_nome, servico_id } = req.body;
+
+        const { data: slot, error: checkError } = await supabase
+            .from('agendamentos')
+            .select('status, barbeiro_id')
+            .eq('id', id)
+            .single();
+
+        if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
+        if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
+
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({
+                cliente_nome,
+                servico_id,
+                status: 'pendente'
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (err) {
+        res.status(400).json({ error: 'Erro ao reservar' });
+    }
+});
+
+// FIM PUBLIC RESERVA
 
 app.use('/api', (req, res, next) => {
     if (req.path.includes('/public/') || req.path.includes('/register')) {
@@ -337,6 +397,8 @@ app.put('/api/agendamentos/:id', async (req, res) => {
     }
 });
 
+// FIM AGENDAMENTOS
+
 // INICIO DISPONIBILIDADE
 
 app.post('/api/disponibilidade', async (req, res) => {
@@ -383,63 +445,6 @@ app.delete('/api/disponibilidade/:id', async (req, res) => {
 
 // FIM DISPONIBILIDADE
 
-// PUBLIC RESERVA
-app.get('/api/public/disponibilidade/:barbeariaId', async (req, res) => {
-    try {
-        const { barbeariaId } = req.params;
-        const { data } = req.query;
-
-        let query = supabase
-            .from('agendamentos')
-            .select(`
-                id, data_hora, barbeiro_id,
-                usuarios!barbeiro_id ( nome )
-            `)
-            .eq('barbearia_id', barbeariaId)
-            .eq('status', 'disponivel')
-            .gt('data_hora', new Date().toISOString());
-
-        const { data: slots, error } = await query;
-        if (error) throw error;
-
-        res.json(slots);
-    } catch (err) {
-        res.status(400).json({ error: 'Erro ao buscar horários' });
-    }
-});
-
-app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { cliente_nome, servico_id } = req.body;
-
-        const { data: slot, error: checkError } = await supabase
-            .from('agendamentos')
-            .select('status, barbeiro_id')
-            .eq('id', id)
-            .single();
-
-        if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
-        if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
-
-        const { data, error } = await supabase
-            .from('agendamentos')
-            .update({
-                cliente_nome,
-                servico_id,
-                status: 'pendente'
-            })
-            .eq('id', id)
-            .select();
-
-        if (error) throw error;
-        res.json(data[0]);
-    } catch (err) {
-        res.status(400).json({ error: 'Erro ao reservar' });
-    }
-});
-
-// FIM AGENDAMENTOS
 
 // INICIO SERVICOS
 
