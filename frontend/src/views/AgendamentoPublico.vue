@@ -6,7 +6,7 @@ import axios from 'axios';
 const route = useRoute();
 const slug = route.params.slug;
 
-let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+let apiBase = import.meta.env.VITE_API_URL || 'https://saas-barbearia-t2gz.onrender.com/api';
 if (apiBase.endsWith('/')) apiBase = apiBase.slice(0, -1);
 if (!apiBase.endsWith('/api')) apiBase += '/api';
 
