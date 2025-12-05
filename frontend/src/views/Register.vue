@@ -6,26 +6,50 @@ import api from '../services/api';
 const router = useRouter();
 
 const form = ref({
-  nome_dono: '',
+  nome: '',
   email: '',
   password: '',
-  nome_barbearia: ''
+  tipo: 'dono', // default
+  nome_barbearia: '',
+  slug_barbearia: ''
 });
 
 const loading = ref(false);
 const erro = ref('');
 
 const handleRegister = async () => {
-  if (!form.value.nome_dono || !form.value.email || !form.value.password || !form.value.nome_barbearia) {
-    erro.value = "Preencha todos os campos.";
+  erro.value = '';
+  
+  // Validações básicas
+  if (!form.value.nome || !form.value.email || !form.value.password) {
+    erro.value = "Preencha os campos básicos.";
+    return;
+  }
+
+  if (form.value.tipo === 'dono' && !form.value.nome_barbearia) {
+    erro.value = "Informe o nome da sua barbearia.";
+    return;
+  }
+  
+  if (form.value.tipo === 'barbeiro' && !form.value.slug_barbearia) {
+    erro.value = "Informe o Slug da barbearia onde você trabalha.";
     return;
   }
 
   loading.value = true;
-  erro.value = '';
 
   try {
-    await api.post('/cadastro', form.value);
+    const payload = {
+        nome: form.value.nome,
+        email: form.value.email,
+        password: form.value.password,
+        tipo: form.value.tipo,
+        // Envia apenas o necessário
+        nome_barbearia: form.value.tipo === 'dono' ? form.value.nome_barbearia : undefined,
+        slug_barbearia: form.value.tipo === 'barbeiro' ? form.value.slug_barbearia : undefined
+    };
+
+    await api.post('/cadastro', payload);
     
     alert("Conta criada com sucesso! Faça login para continuar.");
     router.push('/');
@@ -43,19 +67,44 @@ const handleRegister = async () => {
     <div class="register-card">
       <div class="header">
         <h1>Crie sua conta</h1>
-        <p>Comece a gerenciar sua barbearia hoje</p>
+        <p>Escolha seu perfil abaixo</p>
       </div>
 
       <form @submit.prevent="handleRegister" class="form-body">
         
         <div class="input-group">
-          <label>Seu Nome</label>
-          <input v-model="form.nome_dono" type="text" placeholder="Ex: Lucas Silva" required />
+          <label>Eu sou:</label>
+          <div class="profile-options">
+             <label class="radio-card" :class="{ active: form.tipo === 'dono' }">
+                <input type="radio" v-model="form.tipo" value="dono">
+                <span>👑 Dono</span>
+             </label>
+             <label class="radio-card" :class="{ active: form.tipo === 'barbeiro' }">
+                <input type="radio" v-model="form.tipo" value="barbeiro">
+                <span>✂️ Barbeiro</span>
+             </label>
+             <label class="radio-card" :class="{ active: form.tipo === 'cliente' }">
+                <input type="radio" v-model="form.tipo" value="cliente">
+                <span>👤 Cliente</span>
+             </label>
+          </div>
         </div>
 
         <div class="input-group">
+          <label>Seu Nome</label>
+          <input v-model="form.nome" type="text" placeholder="Ex: Lucas Silva" required />
+        </div>
+
+        <!-- CAMPOS ESPECIFICOS -->
+        <div v-if="form.tipo === 'dono'" class="input-group slide-in">
           <label>Nome da Barbearia</label>
-          <input v-model="form.nome_barbearia" type="text" placeholder="Ex: Lucas Barber Shop" required />
+          <input v-model="form.nome_barbearia" type="text" placeholder="Ex: Lucas Barber Shop" />
+        </div>
+
+        <div v-if="form.tipo === 'barbeiro'" class="input-group slide-in">
+          <label>Slug (Código) da Barbearia</label>
+          <input v-model="form.slug_barbearia" type="text" placeholder="ex: lucas-barber-1234" />
+          <small style="color: #64748b; font-size: 0.8rem;">Peça este código ao dono da barbearia.</small>
         </div>
 
         <div class="input-group">
@@ -71,7 +120,7 @@ const handleRegister = async () => {
         <div v-if="erro" class="error-box">⚠️ {{ erro }}</div>
 
         <button type="submit" :disabled="loading" class="btn-register">
-          {{ loading ? 'Criando...' : 'Criar Conta Grátis' }}
+          {{ loading ? 'Criando...' : 'Criar Conta' }}
         </button>
 
         <div class="login-link">
@@ -94,8 +143,17 @@ p { color: #64748b; margin: 5px 0 0 0; }
 .form-body { display: flex; flex-direction: column; gap: 15px; }
 .input-group { display: flex; flex-direction: column; gap: 5px; }
 .input-group label { font-size: 0.9rem; font-weight: 600; color: #334155; }
-input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+input:not([type="radio"]) { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
 input:focus { border-color: #2563eb; outline: none; }
+
+.profile-options { display: flex; gap: 10px; }
+.radio-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center; font-size: 0.9rem; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;}
+.radio-card input { display: none; }
+.radio-card:hover { background: #f8fafc; }
+.radio-card.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; font-weight: bold; }
+
+.slide-in { animation: slideIn 0.3s ease-out; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
 .btn-register { background: #10b981; color: white; border: none; padding: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; border-radius: 8px; margin-top: 10px; }
 .btn-register:hover:not(:disabled) { background: #059669; }

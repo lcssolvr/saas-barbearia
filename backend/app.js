@@ -9,7 +9,7 @@ function criarSlug(nome) {
     return nome
         .toString()
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') 
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, '-')
         .replace(/[^\w\-]+/g, '')
         .replace(/\-\-+/g, '-')
@@ -28,44 +28,75 @@ app.get('/', (req, res) => res.send('api rodando'));
 
 app.post('/api/cadastro', async (req, res) => {
     try {
-        const { nome_dono, email, password, nome_barbearia } = req.body;
+        const { nome, email, password, tipo, nome_barbearia, slug_barbearia } = req.body;
 
+        if (!['dono', 'barbeiro', 'cliente'].includes(tipo)) {
+            return res.status(400).json({ error: 'Tipo de perfil inválido.' });
+        }
+
+        let barbeariaId = null;
+        let slugFinal = null;
+
+        // VALIDAÇÕES ESPECIFICAS
+        if (tipo === 'dono') {
+            if (!nome_barbearia) return res.status(400).json({ error: 'Nome da barbearia é obrigatório para donos.' });
+        } else if (tipo === 'barbeiro') {
+            if (!slug_barbearia) return res.status(400).json({ error: 'Slug da barbearia é obrigatório para barbeiros.' });
+
+            const { data: bData, error: bError } = await supabase
+                .from('barbearias')
+                .select('id')
+                .eq('slug', slug_barbearia)
+                .single();
+
+            if (bError || !bData) return res.status(404).json({ error: 'Barbearia não encontrada com este slug.' });
+            barbeariaId = bData.id;
+        }
+
+        // CRIAR USUARIO AUTH
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email, password, email_confirm: true
+            email, password, email_confirm: true, user_metadata: { nome, tipo }
         });
         if (authError) throw authError;
 
-        const slugBase = criarSlug(nome_barbearia);
-        const codigoUnico = authData.user.id.substring(0, 4);
-        const slugFinal = `${slugBase}-${codigoUnico}`;
+        // SE FOR DONO, CRIA BARBEARIA
+        if (tipo === 'dono') {
+            const slugBase = criarSlug(nome_barbearia);
+            const codigoUnico = authData.user.id.substring(0, 4);
+            slugFinal = `${slugBase}-${codigoUnico}`;
 
-        const { data: barbeariaData, error: barbeariaError } = await supabase
-            .from('barbearias')
-            .insert([{
-                nome: nome_barbearia,
-                slug: slugFinal,
-                plano: 'free',
-                status: 'ativo'
-            }])
-            .select()
-            .single();
+            const { data: barbeariaData, error: barbeariaError } = await supabase
+                .from('barbearias')
+                .insert([{
+                    nome: nome_barbearia,
+                    slug: slugFinal,
+                    plano: 'free',
+                    status: 'ativo'
+                }])
+                .select()
+                .single();
 
-        if (barbeariaError) {
-            await supabase.auth.admin.deleteUser(authData.user.id);
-            throw barbeariaError;
+            if (barbeariaError) {
+                await supabase.auth.admin.deleteUser(authData.user.id);
+                throw barbeariaError;
+            }
+            barbeariaId = barbeariaData.id;
+
+            // Criar serviços padrão
+            await supabase.from('servicos').insert([
+                { barbearia_id: barbeariaId, nome: 'Corte', preco: 30, duracao_minutos: 30 },
+                { barbearia_id: barbeariaId, nome: 'Barba', preco: 25, duracao_minutos: 30 }
+            ]);
         }
+
+        // INSERIR NA TABLE USUARIOS
         await supabase.from('usuarios').insert([{
             id: authData.user.id,
-            barbearia_id: barbeariaData.id,
-            nome: nome_dono,
+            barbearia_id: barbeariaId, // pode ser null se for cliente
+            nome: nome,
             email: email,
-            tipo: 'dono'
+            tipo: tipo
         }]);
-        
-        await supabase.from('servicos').insert([
-            { barbearia_id: barbeariaData.id, nome: 'Corte', preco: 30, duracao_minutos: 30 },
-            { barbearia_id: barbeariaData.id, nome: 'Barba', preco: 25, duracao_minutos: 30 }
-        ]);
 
         res.status(201).json({ message: 'Conta criada!', slug: slugFinal });
 
@@ -110,7 +141,7 @@ app.post('/api/public/agendamentos', async (req, res) => {
             .from('usuarios')
             .select('id')
             .eq('barbearia_id', barbearia_id)
-            .in('tipo', ['dono', 'barbeiro']) 
+            .in('tipo', ['dono', 'barbeiro'])
             .limit(1)
             .single();
 
@@ -214,7 +245,7 @@ app.post('/api/agendamentos', async (req, res) => {
             .from('agendamentos')
             .insert([
                 {
-                    barbearia_id: req.barbeariaId, 
+                    barbearia_id: req.barbeariaId,
                     barbeiro_id: req.user.id,
                     cliente_nome,
                     data_hora,
@@ -258,11 +289,11 @@ app.put('/api/agendamentos/:id', async (req, res) => {
 
         const { data, error } = await supabase
             .from('agendamentos')
-            .update({ 
-                cliente_nome, 
-                data_hora, 
-                servico_id, 
-                status 
+            .update({
+                cliente_nome,
+                data_hora,
+                servico_id,
+                status
             })
             .eq('id', id)
             .eq('barbearia_id', req.barbeariaId)
@@ -295,7 +326,7 @@ app.get('/api/servicos', async (req, res) => {
 app.post('/api/servicos', async (req, res) => {
     try {
         const { nome, preco, duracao_minutos } = req.body;
-        
+
         const { data, error } = await supabase
             .from('servicos')
             .insert([{
@@ -316,7 +347,7 @@ app.post('/api/servicos', async (req, res) => {
 app.delete('/api/servicos/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const { error } = await supabase
             .from('servicos')
             .delete()
