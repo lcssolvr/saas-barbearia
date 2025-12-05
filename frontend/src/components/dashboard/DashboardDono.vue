@@ -1,9 +1,11 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import api from '../../services/api';
+
 const servicos = ref([]);
 const novoServico = ref({ nome: '', preco: '', duracao_minutos: 30 });
 const editingId = ref(null);
+
 import {
   Chart as ChartJS,
   Title,
@@ -276,7 +278,8 @@ const shareLink = () => {
     .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
     .header-actions { width: 100%; }
     .btn-share { width: 100%; }
-    .charts-row { flex-direction: column; }
+    .charts-row { flex-direction: column; gap: 15px; }
+    .chart-container { height: auto; min-height: 350px; width: auto; }
 }
 
 .charts-row { display: flex; gap: 20px; margin-bottom: 40px; }

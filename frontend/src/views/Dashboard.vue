@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 import DashboardDono from '../components/dashboard/DashboardDono.vue';
 import DashboardBarbeiro from '../components/dashboard/DashboardBarbeiro.vue';
 import DashboardCliente from '../components/dashboard/DashboardCliente.vue';
+import DashboardAdmin from '../components/dashboard/DashboardAdmin.vue';
 import ModalAgendamento from '../components/ModalAgendamento.vue';
 
 const agendamentos = ref([]);
@@ -78,6 +79,11 @@ onMounted(() => loadData());
             :agendamentos="agendamentos"
             :barbeariaSlug="userProfile.barbearia_slug"
             @logout="logout"
+        />
+
+        <DashboardAdmin 
+            v-else-if="userProfile.tipo === 'super_admin'"
+            :user="userProfile"
         />
 
         <DashboardBarbeiro 

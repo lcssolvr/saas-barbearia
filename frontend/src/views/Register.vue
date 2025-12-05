@@ -100,7 +100,7 @@ const handleRegister = async () => {
 
         <div v-if="form.tipo === 'barbeiro'" class="input-group slide-in">
           <label>Código da Barbearia</label>
-          <input v-model="form.slug_barbearia" type="text" placeholder="ex: loja-barber-1234" />
+          <input v-model="form.slug_barbearia" type="text" placeholder="ex: barber-shop-1234" />
           <small style="color: #64748b; font-size: 0.8rem;">Peça este código ao dono da barbearia.</small>
         </div>
 
@@ -152,14 +152,14 @@ input:focus { border-color: #2563eb; outline: none; }
 .slide-in { animation: slideIn 0.3s ease-out; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-.btn-register { background: #10b981; color: white; border: none; padding: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; border-radius: 8px; margin-top: 10px; }
-.btn-register:hover:not(:disabled) { background: #059669; }
+.btn-register { background: #2563eb; color: white; border: none; padding: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; border-radius: 8px; margin-top: 10px; }
+.btn-register:hover:not(:disabled) { background: #0e2658; }
 .btn-register:disabled { background: #94a3b8; }
 
 .error-box { background: #fef2f2; color: #ef4444; padding: 10px; border-radius: 6px; text-align: center; font-size: 0.9rem;}
 
 .login-link { text-align: center; margin-top: 15px; font-size: 0.9rem; color: #64748b; }
-.login-link a { color: #2563eb; cursor: pointer; text-decoration: underline; font-weight: 600; }
+.login-link a { color: #2563eb; cursor: pointer; text-decoration: underline; font-weight: 600; text-decoration: none; }
 
 @media (max-width: 480px) {
   .register-card {

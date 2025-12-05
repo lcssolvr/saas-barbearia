@@ -36,7 +36,7 @@ const agendarNovamente = () => {
 
         <div class="loyalty-card">
             <div class="loyalty-header">
-                <h3>✂️ Cartão Fidelidade</h3>
+                <h3>Cartão Fidelidade</h3>
                 <span>{{ cortesContagem }}/10</span>
             </div>
             <div class="stamps">
