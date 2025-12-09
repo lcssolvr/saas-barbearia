@@ -5,16 +5,36 @@ import api from '../../services/api';
 const props = defineProps(['agendamentos', 'user']);
 const emit = defineEmits(['refresh']);
 
-const meusAgendamentos = computed(() => {
+const todosAgendamentos = computed(() => {
     return props.agendamentos.filter(a => {
         if (a.status === 'cancelado') return false;
         return a.barbeiro_id === props.user.id;
     }); 
 });
 
+const selectedDate = ref(new Date().toISOString().split('T')[0]);
+
+const changeDate = (days) => {
+    const d = new Date(selectedDate.value);
+    d.setDate(d.getDate() + days);
+    selectedDate.value = d.toISOString().split('T')[0];
+};
+
+const mudarDia = (d) => changeDate(d);
+const irParaHoje = () => selectedDate.value = new Date().toISOString().split('T')[0];
+
+const dataFormatada = computed(() => {
+    const [ano, mes, dia] = selectedDate.value.split('-');
+    return `${dia}/${mes}`;
+});
+
+const agendamentosFiltrados = computed(() => {
+    return todosAgendamentos.value.filter(a => a.data_hora.startsWith(selectedDate.value));
+});
+
 const meusHorariosLivres = computed(() => {
-    return meusAgendamentos.value
-        .filter(a => a.status === 'disponivel' && a.barbeiro_id === props.user.id)
+    return agendamentosFiltrados.value
+        .filter(a => a.status === 'disponivel')
         .sort((a,b) => new Date(a.data_hora) - new Date(b.data_hora));
 });
 
@@ -23,7 +43,10 @@ const novoHorario = ref('');
 const adicionarHorario = async () => {
     if (!novoHorario.value) return alert("Selecione um horário");
     try {
-        const dataISO = new Date(novoHorario.value).toISOString();
+        const dataHoraString = `${selectedDate.value}T${novoHorario.value}:00`;
+        const dataObjeto = new Date(dataHoraString);
+        const dataISO = dataObjeto.toISOString();
+
         await api.post('/disponibilidade', { data_hora: dataISO });
         emit('refresh');
         novoHorario.value = '';
@@ -45,14 +68,14 @@ const removerHorario = async (id) => {
 };
 
 const proximoCliente = computed(() => {
-    return meusAgendamentos.value
+    return todosAgendamentos.value
         .filter(a => a.status === 'pendente')
         .sort((a,b) => new Date(a.data_hora) - new Date(b.data_hora))[0];
 });
 
 const comissaoEstimada = computed(() => {
-    const total = meusAgendamentos.value
-        .filter(a => a.status === 'concluido' && a.barbeiro_id === props.user.id)
+    const total = agendamentosFiltrados.value
+        .filter(a => a.status === 'concluido')
         .reduce((acc, curr) => acc + (curr.servicos?.preco || 0), 0);
     return (total * 0.5).toFixed(2);
 });
@@ -69,7 +92,8 @@ const startService = () => {
 
     currentClient.value = proximoCliente.value;
 
-    timeLeft.value = 40 * 60;
+    const duracao = currentClient.value.servicos?.duracao_minutos || 30;
+    timeLeft.value = duracao * 60;
     timerActive.value = true;
 
     timerInterval = setInterval(() => {
@@ -159,40 +183,49 @@ onUnmounted(() => {
             <p>Nenhum cliente próximo na fila.</p>
         </div>
 
+        <div class="date-controls">
+            <button @click="mudarDia(-1)" class="btn-nav">◀</button>
+            <button @click="irParaHoje" class="btn-today">Hoje</button>
+            <span class="current-date">{{ dataFormatada }}</span>
+            <button @click="mudarDia(1)" class="btn-nav">▶</button>
+        </div>
+
         <div class="stats-row">
             <div class="stat-box">
-                <span>Minha Comissão (Hoje)</span>
+                <span>Minha Comissão ({{ dataFormatada }})</span>
                 <strong>R$ {{ comissaoEstimada }}</strong>
             </div>
         </div>
         
         <div class="schedule-manager">
-            <h3>📅 Gerenciar Horários Livres</h3>
+            <h3>📅 Gerenciar Horários ({{ dataFormatada }})</h3>
             <div class="add-slot-row">
-                <input type="datetime-local" v-model="novoHorario" class="input-date">
+                <input type="time" v-model="novoHorario" class="input-date">
                 <button @click="adicionarHorario" class="btn-add">Adicionar</button>
             </div>
             
             <div class="slots-grid">
                 <div v-for="slot in meusHorariosLivres" :key="slot.id" class="slot-item">
                     <span>
-                        {{ new Date(slot.data_hora).toLocaleDateString([], {day: '2-digit', month: '2-digit'}) }} <br>
                         <strong>{{ new Date(slot.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</strong>
                     </span>
                     <button @click="removerHorario(slot.id)" class="btn-remove">🗑️</button>
                 </div>
             </div>
-            <p v-if="meusHorariosLivres.length === 0" class="empty-msg">Você não disponibilizou horários extras.</p>
+            <p v-if="meusHorariosLivres.length === 0" class="empty-msg">Nenhum horário livre nesta data.</p>
         </div>
 
         <div class="timeline">
-            <h3>Agenda de Hoje</h3>
+            <h3>Agenda ({{ dataFormatada }})</h3>
+            <div v-if="agendamentosFiltrados.length === 0" class="empty-agenda">
+                Nenhum agendamento para este dia.
+            </div>
             <ul>
-                <li v-for="item in meusAgendamentos" :key="item.id" class="timeline-item" :class="item.status">
+                <li v-for="item in agendamentosFiltrados" :key="item.id" class="timeline-item" :class="item.status">
                     <span class="time">{{ new Date(item.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
                     <div class="details">
                         <strong class="client-name">{{ item.cliente_nome }}</strong>
-                        <small>{{ item.servicos?.nome }}</small>
+                        <small>{{ item.servicos?.nome || 'Serviço removido' }}</small>
                     </div>
                     
                     <div class="status-badge">
@@ -361,5 +394,36 @@ onUnmounted(() => {
 }
 .btn-remove:hover { opacity: 1; color: #ef4444; }
 .empty-msg { color: #94a3b8; font-style: italic; font-size: 0.9rem; text-align: center; margin-top: 10px; }
+
+
+.date-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    background: white;
+    padding: 10px;
+    border-radius: 50px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+.btn-nav, .btn-today {
+    background: #f1f5f9;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    color: #475569;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-nav:hover, .btn-today:hover { background: #e2e8f0; color: #1e293b; }
+.btn-today { background: #e0f2fe; color: #0284c7; }
+.current-date { font-weight: 800; color: #334155; font-size: 1.1rem; min-width: 80px; text-align: center; }
+
+.empty-agenda { text-align: center; color: #94a3b8; font-style: italic; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
 
 </style>

@@ -116,7 +116,7 @@ app.get('/api/public/barbearia/:slug', async (req, res) => {
             .from('barbearias')
             .select(`
                 id, nome, slug,
-                servicos ( id, nome, preco )
+                servicos ( id, nome, preco, duracao_minutos )
             `)
             .eq('slug', slug)
             .single();
@@ -202,12 +202,25 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
 
         const { data: slot, error: checkError } = await supabase
             .from('agendamentos')
-            .select('status, barbeiro_id')
+            .select('data_hora, status, barbeiro_id, barbearia_id')
             .eq('id', id)
             .single();
 
         if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
         if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
+
+        const { data: servico, error: servicoError } = await supabase
+            .from('servicos')
+            .select('duracao_minutos')
+            .eq('id', servico_id)
+            .single();
+
+        if (servicoError || !servico) return res.status(400).json({ error: 'Serviço inválido' });
+
+        const duracao = servico.duracao_minutos || 30;
+
+        const dataInicio = new Date(slot.data_hora);
+        const dataFim = new Date(dataInicio.getTime() + duracao * 60000);
 
         const { data, error } = await supabase
             .from('agendamentos')
@@ -220,8 +233,22 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
             .select();
 
         if (error) throw error;
+
+        const inicioConflito = new Date(dataInicio.getTime() + 1000).toISOString(); // +1s para não pegar o próprio slot (embora ele já esteja 'pendente' agora, mas por segurança)
+        const fimConflito = dataFim.toISOString();
+
+        await supabase
+            .from('agendamentos')
+            .delete()
+            .eq('barbearia_id', slot.barbearia_id)
+            .eq('barbeiro_id', slot.barbeiro_id)
+            .eq('status', 'disponivel')
+            .gte('data_hora', inicioConflito)
+            .lt('data_hora', fimConflito);
+
         res.json(data[0]);
     } catch (err) {
+        console.error("Erro ao reservar:", err);
         res.status(400).json({ error: 'Erro ao reservar' });
     }
 });
@@ -310,7 +337,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 app.get('/api/agendamentos', async (req, res) => {
     let query = supabase
         .from('agendamentos')
-        .select('*, servicos(nome, preco), usuarios!barbeiro_id(nome)')
+        .select('*, servicos(nome, preco, duracao_minutos), usuarios!barbeiro_id(nome)')
         .eq('barbearia_id', req.barbeariaId);
 
     if (req.userType === 'cliente') {

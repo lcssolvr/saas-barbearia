@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '../services/api'; 
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
@@ -14,6 +14,7 @@ const loading = ref(true);
 const modalAberto = ref(false);
 const itemParaEditar = ref(null);
 const userProfile = ref({});
+let intervalId = null;
 
 const dataFiltro = ref(new Date().toISOString().split('T')[0]);
 
@@ -27,8 +28,8 @@ const agendamentosFiltrados = computed(() => {
   });
 });
 
-const loadData = async () => {
-    loading.value = true;
+const loadData = async (showLoading = true) => {
+    if (showLoading) loading.value = true;
     try {
         const { data: me } = await api.get('/me');
         userProfile.value = me;
@@ -39,7 +40,7 @@ const loadData = async () => {
     } catch (e) {
         console.error("Erro ao carregar dashboard:", e);
     } finally {
-        loading.value = false;
+        if (showLoading) loading.value = false;
     }
 };
 
@@ -58,13 +59,22 @@ const salvarAgendamento = async (dados) => {
       alert('Criado com sucesso!');
     }
     modalAberto.value = false;
-    loadData();
+    loadData(false);
   } catch (error) {
     alert('Erro: ' + error.message);
   }
 };
 
-onMounted(() => loadData());
+onMounted(() => {
+    loadData(true);
+    intervalId = setInterval(() => {
+        loadData(false);
+    }, 10000); // Poll every 10 seconds
+});
+
+onUnmounted(() => {
+    if (intervalId) clearInterval(intervalId);
+});
 </script>
 
 <template>
