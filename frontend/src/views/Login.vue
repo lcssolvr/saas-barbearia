@@ -24,7 +24,7 @@ const handleLogin = async () => {
     const tipo = String(authStore.userType).trim().toLowerCase();
 
     if (tipo === 'super_admin') {
-        router.push('/admin');
+        router.push('/dashboard');
     } else {
         router.push('/dashboard');
     }
