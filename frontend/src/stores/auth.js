@@ -28,7 +28,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = data.user;
       this.session = data.session;
-      this.userType = profile.tipo; 
+      this.userType = profile.tipo;
 
       localStorage.setItem('barber_token', data.session.access_token);
       localStorage.setItem('user_type', profile.tipo);
@@ -46,16 +46,15 @@ export const useAuthStore = defineStore('auth', {
         this.userType = null;
         localStorage.removeItem('barber_token');
         localStorage.removeItem('user_type');
-        window.location.href = '/'; 
       }
     },
     async checkSession() {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-            this.user = data.session.user;
-            this.session = data.session;
-            this.userType = localStorage.getItem('user_type');
-        }
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        this.user = data.session.user;
+        this.session = data.session;
+        this.userType = localStorage.getItem('user_type');
+      }
     }
   }
 });
