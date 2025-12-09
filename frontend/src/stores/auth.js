@@ -23,7 +23,7 @@ export const useAuthStore = defineStore('auth', {
 
       if (profileError || !profile) {
         console.error("Erro ao buscar perfil:", profileError);
-        throw new Error("Usuário sem perfil na tabela de dados.");
+        throw new Error("Erro ao buscar perfil");
       }
 
       this.user = data.user;

@@ -146,10 +146,21 @@ const ticketMedio = computed(() => {
 
 const topBarbeiro = computed(() => {
     const counts = {};
+    const hoje = new Date().toISOString().split('T')[0]; // UTC Date matching existing logic
+
     props.agendamentos
-        .filter(a => a.status === 'concluido')
+        .filter(a => a.status === 'concluido' && a.data_hora.startsWith(hoje))
         .forEach(a => {
-           const nome = a.usuarios?.nome || 'Desconhecido';
+           // Verifica se é objeto (join unico) ou array (join multiplo)
+           let nome = 'Desconhecido';
+           if (a.usuarios) {
+               if (Array.isArray(a.usuarios)) {
+                   nome = a.usuarios[0]?.nome || 'Desconhecido';
+               } else {
+                   nome = a.usuarios.nome || 'Desconhecido';
+               }
+           }
+           
            counts[nome] = (counts[nome] || 0) + 1;
         });
     

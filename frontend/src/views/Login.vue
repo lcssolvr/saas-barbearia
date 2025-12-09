@@ -30,8 +30,9 @@ const handleLogin = async () => {
     }
     
   } catch (err) {
-    erro.value = 'Login falhou.';
     console.error(err);
+    // Exibe a mensagem real do erro (Supabase ou Store)
+    erro.value = err.message || 'Erro ao realizar login.';
   } finally {
     loading.value = false;
   }
