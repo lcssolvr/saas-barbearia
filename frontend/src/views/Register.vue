@@ -49,7 +49,7 @@ const handleRegister = async () => {
 
     await api.post('/cadastro', payload);
     
-    alert("Conta criada com sucesso! Faça login para continuar.");
+    alert("Conta criada! Verifique seu e-mail para ativar a conta antes de fazer login.");
     router.push('/');
   } catch (err) {
     console.error(err);

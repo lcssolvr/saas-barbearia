@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const authMiddleware = require('./middlewares/authMiddleware');
-const supabase = require('./config/supabase');
+const { adminSupabase } = require('./config/supabase');
 
 function criarSlug(nome) {
     if (!nome) return '';
@@ -43,7 +43,7 @@ app.post('/api/cadastro', async (req, res) => {
         } else if (tipo === 'barbeiro') {
             if (!slug_barbearia) return res.status(400).json({ error: 'Slug da barbearia é obrigatório para barbeiros.' });
 
-            const { data: bData, error: bError } = await supabase
+            const { data: bData, error: bError } = await adminSupabase
                 .from('barbearias')
                 .select('id')
                 .eq('slug', slug_barbearia)
@@ -54,8 +54,8 @@ app.post('/api/cadastro', async (req, res) => {
         }
 
         // CRIAR USUARIO AUTH
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email, password, email_confirm: true, user_metadata: { nome, tipo }
+        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+            email, password, email_confirm: false, user_metadata: { nome, tipo }
         });
         if (authError) throw authError;
 
@@ -65,7 +65,7 @@ app.post('/api/cadastro', async (req, res) => {
             const codigoUnico = authData.user.id.substring(0, 4);
             slugFinal = `${slugBase}-${codigoUnico}`;
 
-            const { data: barbeariaData, error: barbeariaError } = await supabase
+            const { data: barbeariaData, error: barbeariaError } = await adminSupabase
                 .from('barbearias')
                 .insert([{
                     nome: nome_barbearia,
@@ -77,20 +77,20 @@ app.post('/api/cadastro', async (req, res) => {
                 .single();
 
             if (barbeariaError) {
-                await supabase.auth.admin.deleteUser(authData.user.id);
+                await adminSupabase.auth.admin.deleteUser(authData.user.id);
                 throw barbeariaError;
             }
             barbeariaId = barbeariaData.id;
 
             // Criar serviços padrão
-            await supabase.from('servicos').insert([
+            await adminSupabase.from('servicos').insert([
                 { barbearia_id: barbeariaId, nome: 'Corte', preco: 30, duracao_minutos: 30 },
                 { barbearia_id: barbeariaId, nome: 'Barba', preco: 25, duracao_minutos: 30 }
             ]);
         }
 
         // INSERIR NA TABLE USUARIOS
-        await supabase.from('usuarios').insert([{
+        await adminSupabase.from('usuarios').insert([{
             id: authData.user.id,
             barbearia_id: barbeariaId, // pode ser null se for cliente
             nome: nome,
@@ -112,7 +112,7 @@ app.get('/api/public/barbearia/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
 
-        const { data, error } = await supabase
+        const { data, error } = await adminSupabase
             .from('barbearias')
             .select(`
                 id, nome, slug,
@@ -137,7 +137,7 @@ app.post('/api/public/agendamentos', async (req, res) => {
             return res.status(400).json({ error: 'Dados incompletos' });
         }
 
-        const { data: staff } = await supabase
+        const { data: staff } = await adminSupabase
             .from('usuarios')
             .select('id')
             .eq('barbearia_id', barbearia_id)
@@ -147,7 +147,7 @@ app.post('/api/public/agendamentos', async (req, res) => {
 
         if (!staff) return res.status(400).json({ error: 'Nenhum barbeiro disponível nesta unidade.' });
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
             .from('agendamentos')
             .insert([{
                 barbearia_id,
@@ -176,7 +176,7 @@ app.get('/api/public/disponibilidade/:barbeariaId', async (req, res) => {
         const { barbeariaId } = req.params;
         const { data } = req.query;
 
-        let query = supabase
+        let query = adminSupabase
             .from('agendamentos')
             .select(`
                 id, data_hora, barbeiro_id,
@@ -200,7 +200,7 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
         const { id } = req.params;
         const { cliente_nome, servico_id } = req.body;
 
-        const { data: slot, error: checkError } = await supabase
+        const { data: slot, error: checkError } = await adminSupabase
             .from('agendamentos')
             .select('data_hora, status, barbeiro_id, barbearia_id')
             .eq('id', id)
@@ -209,7 +209,7 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
         if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
         if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
 
-        const { data: servico, error: servicoError } = await supabase
+        const { data: servico, error: servicoError } = await adminSupabase
             .from('servicos')
             .select('duracao_minutos')
             .eq('id', servico_id)
@@ -222,7 +222,7 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
         const dataInicio = new Date(slot.data_hora);
         const dataFim = new Date(dataInicio.getTime() + duracao * 60000);
 
-        const { data, error } = await supabase
+        const { data, error } = await adminSupabase
             .from('agendamentos')
             .update({
                 cliente_nome,
@@ -237,7 +237,7 @@ app.put('/api/public/agendamentos/:id/reservar', async (req, res) => {
         const inicioConflito = new Date(dataInicio.getTime() + 1000).toISOString(); // +1s para não pegar o próprio slot (embora ele já esteja 'pendente' agora, mas por segurança)
         const fimConflito = dataFim.toISOString();
 
-        await supabase
+        await adminSupabase
             .from('agendamentos')
             .delete()
             .eq('barbearia_id', slot.barbearia_id)
@@ -262,21 +262,11 @@ app.use('/api', (req, res, next) => {
     authMiddleware(req, res, next);
 });
 
-// SUPER ADMIN ROUTES
+// ROTAS BARBEARIAS (RLS Protected)
 
-const requireSuperAdmin = (req, res, next) => {
-    console.log("Verificando acesso Admin para:", req.userType);
-    if (req.userType !== 'super_admin') {
-        return res.status(403).json({ error: 'Acesso negado. Apenas Super Admins.' });
-    }
-    next();
-};
-
-// ROTAS ADMIN
-
-app.get('/api/admin/tenants', requireSuperAdmin, async (req, res) => {
+app.get('/api/barbearias', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('barbearias')
             .select('*')
             .order('created_at', { ascending: false });
@@ -288,12 +278,12 @@ app.get('/api/admin/tenants', requireSuperAdmin, async (req, res) => {
     }
 });
 
-app.patch('/api/admin/tenants/:id', requireSuperAdmin, async (req, res) => {
+app.patch('/api/barbearias/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { status, plano } = req.body;
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('barbearias')
             .update({ status, plano })
             .eq('id', id)
@@ -306,12 +296,13 @@ app.patch('/api/admin/tenants/:id', requireSuperAdmin, async (req, res) => {
     }
 });
 
-// FIM ROTAS ADMIN
+// FIM ROTAS BARBEARIAS
+
 
 // ROTA PERFIL
 app.get('/api/me', authMiddleware, async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('usuarios')
             .select(`
                 id, nome, email, tipo, barbearia_id,
@@ -335,7 +326,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 // INICIO AGENDAMENTOS
 
 app.get('/api/agendamentos', async (req, res) => {
-    let query = supabase
+    let query = req.supabase
         .from('agendamentos')
         .select('*, servicos(nome, preco, duracao_minutos), usuarios!barbeiro_id(nome)')
         .eq('barbearia_id', req.barbeariaId);
@@ -358,7 +349,7 @@ app.post('/api/agendamentos', async (req, res) => {
             return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('agendamentos')
             .insert([
                 {
@@ -385,7 +376,7 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const { error } = await supabase
+        const { error } = await req.supabase
             .from('agendamentos')
             .delete()
             .eq('id', id)
@@ -404,7 +395,7 @@ app.put('/api/agendamentos/:id', async (req, res) => {
         const { id } = req.params;
         const { cliente_nome, data_hora, servico_id, status, barbeiro_id } = req.body;
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('agendamentos')
             .update({
                 cliente_nome,
@@ -433,7 +424,7 @@ app.post('/api/disponibilidade', async (req, res) => {
         const { data_hora } = req.body;
         if (!data_hora) return res.status(400).json({ error: 'Data e hora são obrigatórios' });
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('agendamentos')
             .insert([{
                 barbearia_id: req.barbeariaId,
@@ -456,7 +447,7 @@ app.post('/api/disponibilidade', async (req, res) => {
 app.delete('/api/disponibilidade/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { error } = await supabase
+        const { error } = await req.supabase
             .from('agendamentos')
             .delete()
             .eq('id', id)
@@ -477,7 +468,7 @@ app.delete('/api/disponibilidade/:id', async (req, res) => {
 
 app.get('/api/servicos', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('servicos')
             .select('*')
             .eq('barbearia_id', req.barbeariaId);
@@ -492,7 +483,7 @@ app.post('/api/servicos', async (req, res) => {
     try {
         const { nome, preco, duracao_minutos } = req.body;
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('servicos')
             .insert([{
                 barbearia_id: req.barbeariaId,
@@ -513,7 +504,7 @@ app.delete('/api/servicos/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const { error } = await supabase
+        const { error } = await req.supabase
             .from('servicos')
             .delete()
             .eq('id', id)
@@ -531,7 +522,7 @@ app.put('/api/servicos/:id', async (req, res) => {
         const { id } = req.params;
         const { nome, preco, duracao_minutos } = req.body;
 
-        const { data, error } = await supabase
+        const { data, error } = await req.supabase
             .from('servicos')
             .update({ nome, preco, duracao_minutos })
             .eq('id', id)

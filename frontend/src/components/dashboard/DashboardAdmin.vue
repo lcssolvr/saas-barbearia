@@ -13,7 +13,7 @@ const filterPlan = ref('');
 const loadTenants = async () => {
     loading.value = true;
     try {
-        const { data } = await api.get('/admin/tenants');
+        const { data } = await api.get('/barbearias');
         tenants.value = data;
     } catch (e) {
         console.error(e);
@@ -37,7 +37,7 @@ const filteredTenants = computed(() => {
 const updateTenant = async (id, payload) => {
     if (!confirm("Confirmar alteração?")) return;
     try {
-        await api.patch(`/admin/tenants/${id}`, payload);
+        await api.patch(`/barbearias/${id}`, payload);
         loadTenants();
     } catch (e) {
         alert("Erro ao atualizar status/plano");

@@ -5,14 +5,20 @@ import api from '../../services/api';
 const props = defineProps(['agendamentos', 'user']);
 const emit = defineEmits(['refresh']);
 
+const getTodayDate = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+};
+
+const selectedDate = ref(getTodayDate());
+
 const todosAgendamentos = computed(() => {
     return props.agendamentos.filter(a => {
         if (a.status === 'cancelado') return false;
         return a.barbeiro_id === props.user.id;
     }); 
 });
-
-const selectedDate = ref(new Date().toISOString().split('T')[0]);
 
 const changeDate = (days) => {
     const d = new Date(selectedDate.value);
@@ -21,7 +27,9 @@ const changeDate = (days) => {
 };
 
 const mudarDia = (d) => changeDate(d);
-const irParaHoje = () => selectedDate.value = new Date().toISOString().split('T')[0];
+const irParaHoje = () => selectedDate.value = getTodayDate();
+
+const isToday = computed(() => selectedDate.value === getTodayDate());
 
 const dataFormatada = computed(() => {
     const [ano, mes, dia] = selectedDate.value.split('-');
@@ -67,8 +75,8 @@ const removerHorario = async (id) => {
     }
 };
 
-const proximoCliente = computed(() => {
-    return todosAgendamentos.value
+const proximoDoDia = computed(() => {
+    return agendamentosFiltrados.value
         .filter(a => a.status === 'pendente')
         .sort((a,b) => new Date(a.data_hora) - new Date(b.data_hora))[0];
 });
@@ -88,9 +96,9 @@ let timerInterval = null;
 
 const startService = () => {
     if (timerActive.value) return;
-    if (!proximoCliente.value) return;
+    if (!proximoDoDia.value) return;
 
-    currentClient.value = proximoCliente.value;
+    currentClient.value = proximoDoDia.value;
 
     const duracao = currentClient.value.servicos?.duracao_minutos || 30;
     timeLeft.value = duracao * 60;
@@ -152,18 +160,18 @@ onUnmounted(() => {
     <div class="dash-barbeiro">
         <h2>✂️ Olá, {{ user.nome }}</h2>
         
-        <div class="hero-card" v-if="currentClient || proximoCliente">
+        <div class="hero-card" v-if="(timerActive) || (proximoDoDia)">
             <span class="label">{{ timerActive ? 'Em Atendimento' : 'Próximo Cliente' }}</span>
             
             <div class="client-info">
-                <h1>{{ (timerActive && currentClient) ? currentClient.cliente_nome : (proximoCliente ? proximoCliente.cliente_nome : '...') }}</h1>
+                <h1>{{ (timerActive && currentClient) ? currentClient.cliente_nome : (proximoDoDia ? proximoDoDia.cliente_nome : '...') }}</h1>
                 <p v-if="timerActive && currentClient">
                      {{ new Date(currentClient.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }} 
                     - {{ currentClient.servicos?.nome }}
                 </p>
-                <p v-else-if="proximoCliente">
-                    {{ new Date(proximoCliente.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }} 
-                    - {{ proximoCliente.servicos?.nome }}
+                <p v-else-if="proximoDoDia">
+                    {{ new Date(proximoDoDia.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }} 
+                    - {{ proximoDoDia.servicos?.nome }}
                 </p>
             </div>
 
