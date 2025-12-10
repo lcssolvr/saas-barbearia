@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const authMiddleware = require('./middlewares/authMiddleware');
 const { adminSupabase } = require('./config/supabase');
+const { sendConfirmationEmail } = require('./services/emailService');
 
 function criarSlug(nome) {
     if (!nome) return '';
@@ -29,6 +30,7 @@ app.get('/', (req, res) => res.send('api rodando'));
 app.post('/api/cadastro', async (req, res) => {
     try {
         const { nome, email, password, tipo, nome_barbearia, slug_barbearia } = req.body;
+        const origin = req.get('origin') || 'http://localhost:5173';
 
         if (!['dono', 'barbeiro', 'cliente'].includes(tipo)) {
             return res.status(400).json({ error: 'Tipo de perfil inválido.' });
@@ -53,16 +55,52 @@ app.post('/api/cadastro', async (req, res) => {
             barbeariaId = bData.id;
         }
 
-        // CRIAR USUARIO AUTH
-        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
-            email, password, email_confirm: false, user_metadata: { nome, tipo }
+        let authUser = null;
+        let createdByBackend = false;
+
+        try {
+            const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+                email, password, email_confirm: false, user_metadata: { nome, tipo }
+            });
+            if (authError) throw authError;
+            authUser = authData.user;
+            createdByBackend = true;
+        } catch (createError) {
+            if (createError.message?.includes('already registered') || createError.status === 422) {
+                const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers();
+                if (listError) throw listError;
+
+                const found = users.find(u => u.email === email);
+                if (!found) throw new Error('User exists but could not be found via listUsers');
+                authUser = found;
+            } else {
+                throw createError;
+            }
+        }
+
+        const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+            type: 'signup',
+            email: email,
+            password: password,
+            options: {
+                redirectTo: `${origin}/auth/callback`,
+                data: { nome, tipo }
+            }
         });
-        if (authError) throw authError;
+
+        if (linkError) {
+            console.error("Erro gerando link:", linkError);
+            throw linkError;
+        }
+
+        await sendConfirmationEmail(email, linkData.properties.action_link);
+
 
         // SE FOR DONO, CRIA BARBEARIA
         if (tipo === 'dono') {
             const slugBase = criarSlug(nome_barbearia);
-            const codigoUnico = authData.user.id.substring(0, 4);
+            const codigoUnico = authUser.id.substring(0, 4);
+
             slugFinal = `${slugBase}-${codigoUnico}`;
 
             const { data: barbeariaData, error: barbeariaError } = await adminSupabase
@@ -77,7 +115,7 @@ app.post('/api/cadastro', async (req, res) => {
                 .single();
 
             if (barbeariaError) {
-                await adminSupabase.auth.admin.deleteUser(authData.user.id);
+                if (createdByBackend) await adminSupabase.auth.admin.deleteUser(authUser.id);
                 throw barbeariaError;
             }
             barbeariaId = barbeariaData.id;
@@ -91,14 +129,14 @@ app.post('/api/cadastro', async (req, res) => {
 
         // INSERIR NA TABLE USUARIOS
         await adminSupabase.from('usuarios').insert([{
-            id: authData.user.id,
+            id: authUser.id,
             barbearia_id: barbeariaId, // pode ser null se for cliente
             nome: nome,
             email: email,
             tipo: tipo
         }]);
 
-        res.status(201).json({ message: 'Conta criada!', slug: slugFinal });
+        res.status(201).json({ message: 'Conta criada! Verifique seu e-mail.', slug: slugFinal });
 
     } catch (err) {
         console.error(err);

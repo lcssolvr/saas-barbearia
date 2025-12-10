@@ -5,6 +5,7 @@ import Servicos from '../views/Servicos.vue';
 import Register from '../views/Register.vue';
 
 import AgendamentoPublico from '../views/AgendamentoPublico.vue';
+import AuthCallback from '../views/AuthCallback.vue';
 
 const routes = [
   {
@@ -33,6 +34,11 @@ const routes = [
   {
     path: '/agendar/:slug',
     component: AgendamentoPublico
+  },
+  {
+    path: '/auth/callback',
+    component: AuthCallback,
+    name: 'AuthCallback'
   }
 ];
 
