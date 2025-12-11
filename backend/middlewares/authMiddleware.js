@@ -17,6 +17,7 @@ const authMiddleware = async (req, res, next) => {
             .select(`
                 barbearia_id, 
                 tipo,
+                nome,
                 barbearias ( status )
             `)
             .eq('id', user.id)
@@ -46,6 +47,7 @@ const authMiddleware = async (req, res, next) => {
 
         req.supabase = supabase;
         req.user = user;
+        req.user.nome = profile.nome;
         req.barbeariaId = profile.barbearia_id;
         req.userType = profile.tipo;
 

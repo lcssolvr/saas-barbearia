@@ -97,7 +97,7 @@ onUnmounted(() => {
             v-else-if="userProfile.tipo === 'barbeiro'"
             :user="userProfile"
             :agendamentos="agendamentos"
-            @refresh="loadData"
+            @refresh="loadData(false)"
         />
 
         <DashboardCliente 

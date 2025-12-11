@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 const email = ref('');
 const password = ref('');
@@ -8,6 +8,7 @@ const loading = ref(false);
 const erro = ref('');
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const handleLogin = async () => {
@@ -23,8 +24,14 @@ const handleLogin = async () => {
 
     const tipo = String(authStore.userType).trim().toLowerCase();
 
-    if (tipo === 'super_admin') {
-        router.push('/dashboard');
+    const redirectPath = route.query.redirect || '/dashboard';
+    
+    // Se for client indo para dashboard, pode ser que queira ir para agendar, mas o dashboard cliente
+    // é '/dashboard'. Se for owner/barber, também vai para dashboard.
+    // O redirectPath vai respeitar se veio de /agendar/slug
+
+    if (redirectPath && redirectPath !== '/') {
+         router.push(redirectPath);
     } else {
         router.push('/dashboard');
     }

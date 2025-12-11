@@ -33,7 +33,8 @@ const routes = [
 
   {
     path: '/agendar/:slug',
-    component: AgendamentoPublico
+    component: AgendamentoPublico,
+    meta: { requiresAuth: true }
   },
   {
     path: '/auth/callback',
@@ -51,7 +52,7 @@ router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('barber_token');
   const userType = localStorage.getItem('user_type');
   if (to.meta.requiresAuth && !token) {
-    return next('/');
+    return next({ path: '/', query: { redirect: to.fullPath } });
   }
 
 

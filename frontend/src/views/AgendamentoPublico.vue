@@ -1,7 +1,7 @@
 <script setup>
+import api from '../services/api';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
 
 const route = useRoute();
 const slug = route.params.slug;
@@ -31,8 +31,20 @@ let interval = null;
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`${apiBase}/public/barbearia/${slug}`);
+    const { data: user } = await api.get('/me');
+    form.value.cliente_nome = user.nome;
+
+    const res = await api.get(`/public/barbearia/${slug}`);
     barbearia.value = res.data;
+
+    const preSelectedServiceId = route.query.servico_id;
+    if (preSelectedServiceId && barbearia.value.servicos) {
+        const found = barbearia.value.servicos.find(s => s.id == preSelectedServiceId);
+        if (found) {
+            selecionarServico(found);
+        }
+    }
+
     fetchSlots();
 
     interval = setInterval(() => {
@@ -40,7 +52,8 @@ onMounted(async () => {
     }, 10000);
 
   } catch (error) {
-    alert("Barbearia não encontrada.");
+    console.error(error);
+    alert("Erro ao carregar dados. Verifique login ou a barbearia.");
   } finally {
     loading.value = false;
   }
@@ -64,7 +77,7 @@ import { watch } from 'vue';
 const fetchSlots = async () => {
   if (!barbearia.value) return;
   try {
-    const { data } = await axios.get(`${apiBase}/public/disponibilidade/${barbearia.value.id}`);
+    const { data } = await api.get(`/public/disponibilidade/${barbearia.value.id}`);
     availableSlots.value = data;
     filterSlotsByDate();
   } catch (e) {
@@ -95,8 +108,7 @@ const confirmar = async () => {
 
   if (form.value.agendamento_id) {
        try {
-        await axios.put(`${apiBase}/public/agendamentos/${form.value.agendamento_id}/reservar`, {
-          cliente_nome: form.value.cliente_nome,
+        await api.put(`/agendamentos/${form.value.agendamento_id}/reservar`, {
           servico_id: form.value.servico_id
         });
         step.value = 4;
@@ -108,7 +120,7 @@ const confirmar = async () => {
 
   const dataHoraISO = `${form.value.data}T${form.value.hora}:00-03:00`;
   try {
-    await axios.post(`${apiBase}/public/agendamentos`, {
+    await api.post(`/agendamentos`, {
       barbearia_id: barbearia.value.id,
       cliente_nome: form.value.cliente_nome,
       servico_id: form.value.servico_id,
@@ -208,7 +220,7 @@ const voltar = () => { if(step.value > 1) step.value--; };
 
           <div class="form-group">
             <label>Seu Nome</label>
-            <input type="text" v-model="form.cliente_nome" placeholder="Ex: João da Silva" class="input-modern" />
+            <input type="text" v-model="form.cliente_nome" class="input-modern" disabled />
           </div>
 
           <div class="final-summary">

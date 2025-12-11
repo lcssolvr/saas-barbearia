@@ -366,11 +366,17 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 app.get('/api/agendamentos', async (req, res) => {
     let query = req.supabase
         .from('agendamentos')
-        .select('*, servicos(nome, preco, duracao_minutos), usuarios!barbeiro_id(nome)')
+        .select('*, servicos(nome, preco, duracao_minutos), usuarios!barbeiro_id(nome), barbearias(slug, nome)')
         .eq('barbearia_id', req.barbeariaId);
 
     if (req.userType === 'cliente') {
-
+        const userId = req.user.id;
+        const userName = req.user.nome;
+        if (userName) {
+            query = query.or(`cliente_id.eq.${userId},cliente_nome.eq.${userName}`);
+        } else {
+            query = query.eq('cliente_id', userId);
+        }
     }
 
     const { data, error } = await query;
@@ -452,6 +458,45 @@ app.put('/api/agendamentos/:id', async (req, res) => {
         res.status(400).json({ error: 'Erro ao atualizar agendamento' });
     }
 });
+
+// RESERVA PROTEGIDA PARA CLIENTES
+app.put('/api/agendamentos/:id/reservar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { servico_id } = req.body;
+        const { data: slot, error: checkError } = await adminSupabase
+            .from('agendamentos')
+            .select('status, barbearia_id, barbeiro_id')
+            .eq('id', id)
+            .single();
+
+        if (checkError || !slot) return res.status(404).json({ error: 'Horário não encontrado' });
+        if (slot.status !== 'disponivel') return res.status(409).json({ error: 'Horário já reservado' });
+
+        const { data, error } = await adminSupabase
+            .from('agendamentos')
+            .update({
+                cliente_nome: req.user.nome,
+                servico_id,
+                status: 'pendente',
+                cliente_id: req.user.id
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            console.error("Erro ao vincular cliente_id (provavel coluna inexistente):", error.message);
+            throw error;
+        }
+
+        res.json(data[0]);
+
+    } catch (err) {
+        console.error("Erro ao reservar (autenticado):", err);
+        res.status(400).json({ error: 'Erro ao reservar horário.' });
+    }
+});
+
 
 // FIM AGENDAMENTOS
 

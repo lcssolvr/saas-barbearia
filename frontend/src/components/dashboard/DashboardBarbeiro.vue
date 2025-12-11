@@ -178,8 +178,19 @@ const formattedTime = computed(() => {
 
 
 
+
+let refreshInterval = null;
+import { onMounted } from 'vue';
+
+onMounted(() => {
+    refreshInterval = setInterval(() => {
+        emit('refresh');
+    }, 10000);
+});
+
 onUnmounted(() => {
     if (timerInterval) clearInterval(timerInterval);
+    if (refreshInterval) clearInterval(refreshInterval);
 });
 
 const isExpired = (dateString) => {
