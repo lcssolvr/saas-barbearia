@@ -7,7 +7,6 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        // Create client specific to this user/token
         const supabase = createScopedClient(token);
 
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -45,7 +44,7 @@ const authMiddleware = async (req, res, next) => {
             }
         }
 
-        req.supabase = supabase; // Request-scoped authenticated client
+        req.supabase = supabase;
         req.user = user;
         req.barbeariaId = profile.barbearia_id;
         req.userType = profile.tipo;

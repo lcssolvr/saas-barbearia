@@ -67,9 +67,6 @@ const salvarAgendamento = async (dados) => {
 
 onMounted(() => {
     loadData(true);
-    intervalId = setInterval(() => {
-        loadData(false);
-    }, 10000); // Poll every 10 seconds
 });
 
 onUnmounted(() => {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 
@@ -25,16 +25,29 @@ const form = ref({
   barbeiro_nome: ''
 });
 
+
+
+let interval = null;
+
 onMounted(async () => {
   try {
     const res = await axios.get(`${apiBase}/public/barbearia/${slug}`);
     barbearia.value = res.data;
     fetchSlots();
+
+    interval = setInterval(() => {
+        fetchSlots();
+    }, 10000);
+
   } catch (error) {
     alert("Barbearia não encontrada.");
   } finally {
     loading.value = false;
   }
+});
+
+onUnmounted(() => {
+    if (interval) clearInterval(interval);
 });
 
 const selecionarServico = (servico) => {

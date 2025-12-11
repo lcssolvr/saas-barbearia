@@ -15,7 +15,6 @@ const selectedDate = ref(getTodayDate());
 
 const todosAgendamentos = computed(() => {
     return props.agendamentos.filter(a => {
-        if (a.status === 'cancelado') return false;
         return a.barbeiro_id === props.user.id;
     }); 
 });
@@ -50,9 +49,14 @@ const novoHorario = ref('');
 
 const adicionarHorario = async () => {
     if (!novoHorario.value) return alert("Selecione um horário");
+    const dataHoraString = `${selectedDate.value}T${novoHorario.value}:00`;
+    const dataObjeto = new Date(dataHoraString);
+    
+    if (dataObjeto < new Date()) {
+        return alert("Não é possível adicionar horário no passado.");
+    }
+
     try {
-        const dataHoraString = `${selectedDate.value}T${novoHorario.value}:00`;
-        const dataObjeto = new Date(dataHoraString);
         const dataISO = dataObjeto.toISOString();
 
         await api.post('/disponibilidade', { data_hora: dataISO });
@@ -72,6 +76,27 @@ const removerHorario = async (id) => {
         emit('refresh');
     } catch (e) {
         alert("Erro ao remover");
+    }
+};
+
+const cancelarAgendamento = async (id) => {
+    if(!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+    try {        
+        const agendamento = props.agendamentos.find(a => a.id === id);
+        if (!agendamento) return;
+
+        await api.put(`/agendamentos/${id}`, {
+            status: 'cancelado',
+            cliente_nome: agendamento.cliente_nome,
+            data_hora: agendamento.data_hora,
+            servico_id: agendamento.servico_id,
+            barbeiro_id: props.user.id
+        });
+        
+        emit('refresh');
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao cancelar agendamento.");
     }
 };
 
@@ -151,9 +176,15 @@ const formattedTime = computed(() => {
     return `${m}:${s}`;
 });
 
+
+
 onUnmounted(() => {
     if (timerInterval) clearInterval(timerInterval);
 });
+
+const isExpired = (dateString) => {
+    return new Date(dateString) < new Date();
+};
 </script>
 
 <template>
@@ -167,11 +198,11 @@ onUnmounted(() => {
                 <h1>{{ (timerActive && currentClient) ? currentClient.cliente_nome : (proximoDoDia ? proximoDoDia.cliente_nome : '...') }}</h1>
                 <p v-if="timerActive && currentClient">
                      {{ new Date(currentClient.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }} 
-                    - {{ currentClient.servicos?.nome }}
+                    - {{ currentClient.servicos?.nome }} - R$ {{ currentClient.servicos?.preco }}
                 </p>
                 <p v-else-if="proximoDoDia">
                     {{ new Date(proximoDoDia.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }} 
-                    - {{ proximoDoDia.servicos?.nome }}
+                    - {{ proximoDoDia.servicos?.nome }} - R$ {{ proximoDoDia.servicos?.preco }}
                 </p>
             </div>
 
@@ -213,10 +244,11 @@ onUnmounted(() => {
             </div>
             
             <div class="slots-grid">
-                <div v-for="slot in meusHorariosLivres" :key="slot.id" class="slot-item">
+                <div v-for="slot in meusHorariosLivres" :key="slot.id" class="slot-item" :class="{ 'expired': isExpired(slot.data_hora) }">
                     <span>
                         <strong>{{ new Date(slot.data_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</strong>
                     </span>
+                    <span v-if="isExpired(slot.data_hora)" class="expired-tag">Expirado</span>
                     <button @click="removerHorario(slot.id)" class="btn-remove">🗑️</button>
                 </div>
             </div>
@@ -239,6 +271,15 @@ onUnmounted(() => {
                     <div class="status-badge">
                         {{ item.status === 'concluido' ? 'Concluído' : (item.status === 'pendente' ? 'Pendente' : 'Cancelado') }}
                     </div>
+
+                    <button 
+                        v-if="item.status === 'pendente'" 
+                        class="btn-cancel-small" 
+                        @click="cancelarAgendamento(item.id)"
+                        title="Cancelar Agendamento"
+                    >
+                        ✕
+                    </button>
                 </li>
             </ul>
         </div>
@@ -398,7 +439,23 @@ onUnmounted(() => {
     cursor: pointer;
     font-size: 1rem;
     opacity: 0.5;
+    opacity: 0.5;
     transition: opacity 0.2s;
+}
+.slot-item.expired {
+    background: #e2e8f0;
+    opacity: 0.7;
+    border-color: #cbd5e1;
+}
+.slot-item.expired strong {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+.expired-tag {
+    font-size: 0.7rem;
+    color: #ef4444;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 .btn-remove:hover { opacity: 1; color: #ef4444; }
 .empty-msg { color: #94a3b8; font-style: italic; font-size: 0.9rem; text-align: center; margin-top: 10px; }
@@ -433,5 +490,26 @@ onUnmounted(() => {
 .current-date { font-weight: 800; color: #334155; font-size: 1.1rem; min-width: 80px; text-align: center; }
 
 .empty-agenda { text-align: center; color: #94a3b8; font-style: italic; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+
+.btn-cancel-small {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: 0.2s;
+    margin-left: 10px;
+}
+.btn-cancel-small:hover {
+    background: #ef4444;
+    color: white;
+}
 
 </style>

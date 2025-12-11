@@ -462,6 +462,10 @@ app.post('/api/disponibilidade', async (req, res) => {
         const { data_hora } = req.body;
         if (!data_hora) return res.status(400).json({ error: 'Data e hora são obrigatórios' });
 
+        if (new Date(data_hora) < new Date()) {
+            return res.status(400).json({ error: 'Não é possível disponibilizar horários no passado.' });
+        }
+
         const { data, error } = await req.supabase
             .from('agendamentos')
             .insert([{

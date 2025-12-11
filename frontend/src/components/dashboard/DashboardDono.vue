@@ -1,11 +1,6 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import api from '../../services/api';
-
-const servicos = ref([]);
-const novoServico = ref({ nome: '', preco: '', duracao_minutos: 30 });
-const editingId = ref(null);
-
 import {
   Chart as ChartJS,
   Title,
@@ -20,6 +15,17 @@ import {
   registerables
 } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
+
+ChartJS.register(...registerables)
+
+const props = defineProps(['agendamentos', 'user', 'barbeariaSlug']);
+const emit = defineEmits(['refresh', 'logout']);
+const chartOptions = { responsive: true, maintainAspectRatio: false };
+
+const servicos = ref([]);
+const novoServico = ref({ nome: '', preco: '', duracao_minutos: 30 });
+const editingId = ref(null);
+let interval = null;
 
 const loadServicos = async () => {
     try {
@@ -76,14 +82,16 @@ const cancelarEdicao = () => {
 
 onMounted(() => {
     loadServicos();
+    
+    // Auto refresh dashboard data
+    interval = setInterval(() => {
+        emit('refresh');
+    }, 10000);
 });
 
-
-ChartJS.register(...registerables)
-
-const props = defineProps(['agendamentos', 'user', 'barbeariaSlug']);
-const emit = defineEmits(['refresh', 'logout']);
-const chartOptions = { responsive: true, maintainAspectRatio: false };
+onUnmounted(() => {
+    if (interval) clearInterval(interval);
+});
 
 const revenueData = computed(() => {
     const last7Days = Array.from({length: 7}, (_, i) => {
