@@ -245,7 +245,7 @@ const voltar = () => { if(step.value > 1) step.value--; };
         </div>
 
         <div v-else-if="step === 4" key="step4" class="success-screen">
-          <div class="check-icon">✨</div>
+          <div class="check-icon">✅</div>
           <h2>Agendado com Sucesso!</h2>
           <p>Tudo certo, <strong>{{ form.cliente_nome }}</strong>.</p>
           <p>Te esperamos dia {{ new Date(form.data + 'T00:00:00').toLocaleDateString('pt-BR') }} às {{ form.hora }}.</p>
