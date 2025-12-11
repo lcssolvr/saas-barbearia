@@ -21,7 +21,7 @@ Este projeto é uma plataforma completa que conecta donos de barbearia, barbeiro
 - **Comissão**: Visualização da comissão estimada (50%).
 - **Gestão de Disponibilidade**: Adicionar horários livres para agendamento online.
 
-### Para Clientes
+### Para Clientes (EM DESENVOLVIMENTO)
 - **Dashboard Exclusivo**: Visão geral de agendamentos futuros e passados.
 - **Cartão Fidelidade**: Programa de pontos integrado (ex: a cada 10 cortes, ganha 1).
 - **Histórico**: Acesso rápido ao histórico de cortes em diferentes barbearias.
@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-## 📂 Estrutura do Projeto
+## Estrutura do Projeto
 
 ### Backend (MVC)
 ```
@@ -87,5 +87,5 @@ npm run dev
     /router      # Configuração de rotas
 ```
 
-## 📝 Licença
+## Licença
 Este projeto foi desenvolvido como um MVP de SaaS para agendamentos.
