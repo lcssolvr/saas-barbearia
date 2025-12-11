@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../views/Login.vue';
+import Home from '../views/Home.vue'; // NEW
 import Dashboard from '../views/Dashboard.vue';
 import Servicos from '../views/Servicos.vue';
 import Register from '../views/Register.vue';
@@ -10,6 +11,11 @@ import AuthCallback from '../views/AuthCallback.vue';
 const routes = [
   {
     path: '/',
+    component: Home, // CHANGED
+    name: 'Home'
+  },
+  {
+    path: '/login', // NEW
     component: Login,
     name: 'Login'
   },
@@ -52,7 +58,7 @@ router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('barber_token');
   const userType = localStorage.getItem('user_type');
   if (to.meta.requiresAuth && !token) {
-    return next({ path: '/', query: { redirect: to.fullPath } });
+    return next({ path: '/login', query: { redirect: to.fullPath } });
   }
 
 

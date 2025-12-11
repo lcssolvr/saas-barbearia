@@ -82,8 +82,6 @@ const cancelarEdicao = () => {
 
 onMounted(() => {
     loadServicos();
-    
-    // Auto refresh dashboard data
     interval = setInterval(() => {
         emit('refresh');
     }, 10000);
@@ -154,12 +152,11 @@ const ticketMedio = computed(() => {
 
 const topBarbeiro = computed(() => {
     const counts = {};
-    const hoje = new Date().toISOString().split('T')[0]; // UTC Date matching existing logic
+    const hoje = new Date().toISOString().split('T')[0];
 
     props.agendamentos
         .filter(a => a.status === 'concluido' && a.data_hora.startsWith(hoje))
         .forEach(a => {
-           // Verifica se é objeto (join unico) ou array (join multiplo)
            let nome = 'Desconhecido';
            if (a.usuarios) {
                if (Array.isArray(a.usuarios)) {

@@ -60,7 +60,7 @@ app.post('/api/cadastro', async (req, res) => {
 
         try {
             const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
-                email, password, email_confirm: false, user_metadata: { nome, tipo }
+                email, password, email_confirm: true, user_metadata: { nome, tipo }
             });
             if (authError) throw authError;
             authUser = authData.user;
@@ -78,22 +78,8 @@ app.post('/api/cadastro', async (req, res) => {
             }
         }
 
-        const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
-            type: 'signup',
-            email: email,
-            password: password,
-            options: {
-                redirectTo: `${origin}/auth/callback`,
-                data: { nome, tipo }
-            }
-        });
-
-        if (linkError) {
-            console.error("Erro gerando link:", linkError);
-            throw linkError;
-        }
-
-        await sendConfirmationEmail(email, linkData.properties.action_link);
+        // REMOVIDO: Envio de email e geração de link
+        // A conta já nasce confirmada (email_confirm: true)
 
 
         // SE FOR DONO, CRIA BARBEARIA
@@ -136,7 +122,7 @@ app.post('/api/cadastro', async (req, res) => {
             tipo: tipo
         }]);
 
-        res.status(201).json({ message: 'Conta criada! Verifique seu e-mail.', slug: slugFinal });
+        res.status(201).json({ message: 'Conta criada com sucesso!', slug: slugFinal });
 
     } catch (err) {
         console.error(err);

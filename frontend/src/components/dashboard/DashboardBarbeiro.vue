@@ -109,8 +109,8 @@ const proximoDoDia = computed(() => {
 const comissaoEstimada = computed(() => {
     const total = agendamentosFiltrados.value
         .filter(a => a.status === 'concluido')
-        .reduce((acc, curr) => acc + (curr.servicos?.preco || 0), 0);
-    return (total * 0.5).toFixed(2);
+        .reduce((acc, curr) => acc + (Number(curr.servicos?.preco) || 0), 0);
+    return (total * 0.50).toFixed(2);
 });
 
 const timerActive = ref(false);

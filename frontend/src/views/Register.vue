@@ -49,8 +49,8 @@ const handleRegister = async () => {
 
     await api.post('/cadastro', payload);
     
-    alert("Conta criada! O link de ativação foi enviado por e-mail.");
-    router.push('/');
+    alert("Conta criada com sucesso! Faça login para continuar.");
+    router.push('/login');
   } catch (err) {
     console.error(err);
     erro.value = err.response?.data?.error || "Erro ao criar conta. Tente novamente.";
@@ -121,7 +121,7 @@ const handleRegister = async () => {
         </button>
 
         <div class="login-link">
-          Já tem conta? <a @click="router.push('/')">Fazer Login</a>
+          Já tem conta? <a @click="router.push('/login')">Fazer Login</a>
         </div>
 
       </form>
