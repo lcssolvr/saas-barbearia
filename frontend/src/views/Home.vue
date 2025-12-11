@@ -180,7 +180,7 @@ const goToMap = () => {
 
 .mockup {
     width: 350px;
-    height: 250px;
+    height: 280px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
@@ -238,7 +238,7 @@ const goToMap = () => {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
-    flex-wrap: wrap; /* Allow wrapping on intermediate screens */
+    flex-wrap: wrap;
 }
 
 .feature-card {
